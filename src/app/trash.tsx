@@ -1,6 +1,8 @@
 import { useMutation, useQuery } from "convex/react";
 import {
+  Alert,
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -14,6 +16,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { themeVars } from "@/theme/theme-provider";
 import { colors, maxContentWidth, spacing } from "@/constants/theme";
+
+const confirmDeleteForever = (onConfirm: () => void) => {
+  if (Platform.OS === "web") {
+    if (window.confirm("Delete this note forever? This cannot be undone.")) onConfirm();
+    return;
+  }
+  Alert.alert("Delete forever?", "This note will be permanently removed.", [
+    { text: "Cancel", style: "cancel" },
+    { text: "Delete", style: "destructive", onPress: onConfirm },
+  ]);
+};
 
 export default function Trash() {
   const trashed = useQuery(api.trash.listTrash);
@@ -37,7 +50,11 @@ export default function Trash() {
           <Button
             variant="ghost"
             size="sm"
-            onPress={() => void removeNote({ id: item._id as Id<"notes"> })}
+            onPress={() =>
+              confirmDeleteForever(() =>
+                void removeNote({ id: item._id as Id<"notes"> })
+              )
+            }
           >
             <Text style={{ color: colors.error, fontSize: 14, fontWeight: "500" }}>
               Delete forever

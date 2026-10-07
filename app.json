@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "diarynotes",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/expo.icon"
     },
@@ -46,7 +46,8 @@
           "microphonePermission": "Allow DiaryNotes to use the microphone.",
           "speechRecognitionPermission": "Allow DiaryNotes to use speech recognition."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

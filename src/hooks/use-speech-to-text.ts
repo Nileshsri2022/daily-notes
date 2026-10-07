@@ -39,7 +39,9 @@ export function useSpeechToText(onSegment: (text: string) => void): SpeechToText
   const [partial, setPartial] = useState("");
 
   const onSegmentRef = useRef(onSegment);
-  onSegmentRef.current = onSegment;
+  useEffect(() => {
+    onSegmentRef.current = onSegment;
+  }, [onSegment]);
   const listeningRef = useRef(false);
 
   const halt = useCallback(() => {

@@ -46,3 +46,6 @@ example
 .mimosa/
 .vscode/
 .zcode/
+.superpowers/
+dist/
+docs/

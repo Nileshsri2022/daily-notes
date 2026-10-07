@@ -7,17 +7,20 @@ import { Platform } from "react-native";
  */
 
 export const colors = {
-  primary: "#18181b",
-  primaryActive: "#3f3f46",
-  primaryDisabled: "#d4d4d8",
+  // Primary palette
+  primary: "#3F6B4F",
+  primaryActive: "#5A7C5F", // slightly lighter for active state
+  primaryDisabled: "#C7D0C5", // pale sage
+
+  // Text and UI colors
   ink: "#18181b",
   body: "#3f3f46",
   bodyStrong: "#18181b",
-  muted: "#71717a",
+  muted: "#6F685B", // muted text on paper background
   mutedSoft: "#a1a1aa",
   hairline: "#e4e4e7",
   hairlineSoft: "#f1f1f3",
-  canvas: "#ffffff",
+  canvas: "#FAF6EE", // paper-like background
   surfaceSoft: "#f4f4f5",
   surfaceCard: "#ffffff",
   surfaceCreamStrong: "#f4f4f5",
@@ -27,11 +30,15 @@ export const colors = {
   onPrimary: "#ffffff",
   onDark: "#fafafa",
   onDarkSoft: "#a1a1aa",
-  accentTeal: "#5db8a6",
-  accentAmber: "#e8a55a",
+
+  // Accent colors
+  accentTeal: "#3A9A9D",
+  accentAmber: "#D99C34",
+
+  // Status colors
   success: "#16a34a",
   warning: "#d4a017",
-  error: "#dc2626",
+  error: "#A63D2F",
 } as const;
 
 export type ThemeColors = Record<keyof typeof colors, string>;

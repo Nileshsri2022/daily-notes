@@ -1,12 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "../../../convex/_generated/api";
@@ -20,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import {
   colors,
   maxContentWidth,
-  radius,
   spacing,
   type,
   type ThemeColors,

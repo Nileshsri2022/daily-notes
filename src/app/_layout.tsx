@@ -3,13 +3,13 @@ import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { Stack, useRouter } from "expo-router";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { verifyInstallation } from "nativewind";
 import { colors } from "@/constants/theme";
-import { useEffect } from "react";
 import "../global.css";
+import { FontProvider } from '@/theme/FontProvider';
 
 export default function RootLayout() {
   const ready =
@@ -37,7 +37,9 @@ function Providers() {
       tokenCache={tokenCache}
     >
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-        <RootNavigator />
+        <FontProvider>
+          <RootNavigator />
+        </FontProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );
@@ -64,7 +66,10 @@ function RootNavigator() {
             title: "DiaryNotes",
             headerRight: () => (
               <View style={styles.headerActions}>
-                <Pressable onPress={() => router.push("/trash")} hitSlop={8}>
+                <Pressable
+                  onPress={() => router.push("/trash")}
+                  style={styles.headerAction}
+                >
                   <Text style={styles.headerLink}>Trash</Text>
                 </Pressable>
                 <SignOutButton />
@@ -86,7 +91,10 @@ function RootNavigator() {
 function SignOutButton() {
   const { signOut } = useClerk();
   return (
-    <Pressable onPress={() => void signOut()} hitSlop={8}>
+    <Pressable
+      onPress={() => void signOut()}
+      style={styles.headerAction}
+    >
       <Text style={[styles.headerLink, { color: colors.ink }]}>Sign out</Text>
     </Pressable>
   );
@@ -123,5 +131,11 @@ const styles = StyleSheet.create({
   headerLink: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  headerAction: {
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: "center",
+    alignItems: "flex-end",
   },
 });

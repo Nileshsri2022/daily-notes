@@ -97,7 +97,7 @@ export default function Feed() {
               marginTop: spacing.sm,
             }}
           >
-            <Text style={[type.caption, { color: colors.mutedSoft }]}>
+            <Text style={[type.caption, { color: colors.muted }]}>
               {item.pinned ? "📌 " : ""}
               {new Date(item.updatedAt).toLocaleString()}
             </Text>

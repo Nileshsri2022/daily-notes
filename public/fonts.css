@@ -1,0 +1,14 @@
+/* fonts.css - Embedded Base64 fonts for web */
+@font-face {
+  font-family: 'Inter';
+  src: url('data:font/ttf;base64,{{BASE64_INTER_TTF}}') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Merriweather';
+  src: url('data:font/ttf;base64,{{BASE64_MERRIWEATHER_TTF}}') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+/* Add additional styles if needed */

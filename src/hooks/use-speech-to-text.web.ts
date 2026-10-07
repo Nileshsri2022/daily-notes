@@ -37,7 +37,9 @@ export function useSpeechToText(onSegment: (text: string) => void): SpeechToText
 
   const recognitionRef = useRef<RecognitionLike | null>(null);
   const onSegmentRef = useRef(onSegment);
-  onSegmentRef.current = onSegment;
+  useEffect(() => {
+    onSegmentRef.current = onSegment;
+  }, [onSegment]);
   const listeningRef = useRef(false);
 
   const halt = useCallback(() => {
@@ -122,7 +124,8 @@ export function useSpeechToText(onSegment: (text: string) => void): SpeechToText
       listeningRef.current = false;
       const recognition = recognitionRef.current;
       try {
-        recognition?.abort ? recognition.abort() : recognition?.stop();
+        if (recognition?.abort) recognition.abort();
+        else recognition?.stop();
       } catch {
         // ignore
       }

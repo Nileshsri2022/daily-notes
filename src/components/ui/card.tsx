@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export function Card({ className, ...props }: ViewProps & { className?: string }) {
   return (
     <View
-      className={cn("overflow-hidden rounded-xl bg-card", className)}
+      className={cn("overflow-hidden rounded-xl border border-border bg-card", className)}
       {...props}
     />
   );
