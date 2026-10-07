@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -26,18 +27,33 @@ export default function Feed() {
   const router = useRouter();
   const notes = useQuery(api.notes.list);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const allTags = notes
     ? [...new Set(notes.flatMap((note) => note.tags ?? []))]
     : [];
   const visibleNotes = notes
-    ? (activeTag
-        ? notes.filter((note) => (note.tags ?? []).includes(activeTag))
-        : notes
-      ).slice()
-      .sort(
-        (a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false)
+    ? (
+        activeTag
+          ? notes.filter((note) => (note.tags ?? []).includes(activeTag))
+          : notes
       )
+        .filter((note) => {
+          const q = query.trim().toLowerCase();
+          if (!q) return true;
+          const plain = (
+            note.format === "html"
+              ? note.body.replace(/<[^>]*>/g, " ")
+              : note.body
+          ).toLowerCase();
+          return (
+            note.title.toLowerCase().includes(q) ||
+            plain.includes(q) ||
+            (note.tags ?? []).some((tag) => tag.includes(q))
+          );
+        })
+        .slice()
+        .sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false))
     : notes;
 
   const renderItem = ({ item }: { item: Doc<"notes"> }) => (
@@ -90,6 +106,14 @@ export default function Feed() {
         <Text style={styles.message}>Loading…</Text>
       ) : (
         <View style={styles.flex}>
+          <TextInput
+            style={styles.search}
+            placeholder="Search notes…"
+            placeholderTextColor={colors.mutedSoft}
+            value={query}
+            onChangeText={setQuery}
+            autoCapitalize="none"
+          />
           {allTags.length > 0 ? (
             <ScrollView
               horizontal
@@ -121,9 +145,11 @@ export default function Feed() {
             contentContainerStyle={styles.list}
             ListEmptyComponent={
               <Text style={styles.message}>
-                {activeTag
-                  ? `No notes tagged #${activeTag}.`
-                  : "No notes yet.\nTap the + button to write your first one."}
+                {query.trim()
+                  ? `No notes matching "${query.trim()}".`
+                  : activeTag
+                    ? `No notes tagged #${activeTag}.`
+                    : "No notes yet.\nTap the + button to write your first one."}
               </Text>
             }
           />
@@ -142,6 +168,18 @@ export default function Feed() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
+  search: {
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: radius.md,
+    backgroundColor: colors.canvas,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.ink,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
+  },
   chips: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
