@@ -1,56 +1,100 @@
-# Welcome to your Expo app 👋
+# DiaryNotes
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A minimal Medium-style notes/diary app. One TypeScript codebase (Expo / React Native) that runs on **Android, iOS, and web**.
 
-## Get started
+- **UI**: plain React Native components, no UI kit
+- **Auth**: [Clerk](https://clerk.com) (email + password)
+- **Data**: [Convex](https://convex.dev) (serverless database + backend functions)
 
-1. Install dependencies
+## Project layout
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/app/          Screens (expo-router)
+  _layout.tsx     Clerk + Convex providers, route guards
+  index.tsx       Home feed of your notes
+  editor.tsx      Create / edit a note
+  note/[id].tsx   Read view (edit / publish / delete)
+  sign-in.tsx     Email + password sign in / sign up
+convex/
+  schema.ts       notes table
+  notes.ts        list / get / create / update / setStatus / remove
+  auth.config.ts  Clerk <-> Convex auth integration
+.env.local        Your Clerk + Convex keys (git-ignored)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## One-time setup
 
-### Other setup steps
+### 1. Clerk (auth)
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+1. Create a free account at [dashboard.clerk.com](https://dashboard.clerk.com) and create an application (enable **Email address** + **Password**).
+2. Copy the **Publishable key** (API Keys page) and paste it into `.env.local`:
+   `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...`
+3. Activate the Convex integration: in the Clerk dashboard go to **Integrations** → **Convex** → **Activate**. This creates a JWT template named `convex` whose claims are pre-mapped and **read-only** — there is nothing to edit or save. (If your dashboard has no Integrations section, use **JWT Templates → New template → Convex** instead.) You're done as soon as a template named `convex` appears in the JWT Templates list.
 
-## Learn more
+### 2. Convex (database + backend)
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npx convex dev
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- Log in (creates a free account if needed), create a new project.
+- This command regenerates `convex/_generated/` (the real version of the checked-in stubs) and writes `EXPO_PUBLIC_CONVEX_URL` into `.env.local`.
+- Then connect Clerk to Convex — copy your Clerk **issuer domain** (API Keys page, e.g. `https://your-app-33.clerk.accounts.dev`) and run:
 
-## Join the community
+```bash
+npx convex env set CLERK_ISSUER_DOMAIN https://your-app-33.clerk.accounts.dev
+```
 
-Join our community of developers creating universal apps.
+Keep `npx convex dev` running while you develop (it syncs backend code).
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### 3. Run the app
+
+```bash
+npm run web        # browser
+npm run android    # Android emulator, or Expo Go on a phone
+npm run ios        # macOS only
+```
+
+## v1 scope
+
+Sign up / sign in, create and edit plain-text notes, draft/published toggle, delete, responsive feed. Rich text editor, images, comments, search — later versions.
+
+## Deploying
+
+> `EXPO_PUBLIC_*` variables are baked into the app at build time — set them in `.env.local` **before** exporting/building.
+
+**1. Backend — switch Convex to production:**
+
+```bash
+npx convex deploy                                                  # creates + pushes to the prod deployment
+npx convex env set --prod CLERK_ISSUER_DOMAIN https://your-app.clerk.accounts.dev
+```
+
+Copy the production deployment URL it prints (looks like `https://<name>.convex.cloud`) and put it in `.env.local` as `EXPO_PUBLIC_CONVEX_URL`, replacing the dev URL. The dev deployment (`npx convex dev`) keeps working independently for development.
+
+**2. Web — deploy to Vercel:**
+
+The repo has a `vercel.json`, so no dashboard configuration is needed.
+
+*Option A — auto-deploy from GitHub (recommended):* push the repo to GitHub, then on [vercel.com/new](https://vercel.com/new) import the repo. Before deploying, add the two Environment Variables in the project settings (production values): `EXPO_PUBLIC_CONVEX_URL` and `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. Every future `git push` redeploys automatically.
+
+*Option B — one-off from your machine:*
+
+```bash
+npm i -g vercel
+vercel deploy dist --prod        # after running npx expo export --platform web
+```
+
+(Netlify and Cloudflare Pages work the same way — build `npx expo export --platform web`, publish the `dist` folder.)
+
+**3. Android — build an installable package with EAS:**
+
+```bash
+npm i -g eas-cli
+eas build -p android --profile preview     # .apk you can sideload / share
+eas build -p android                        # .aab for the Play Store
+```
+
+(Requires a free Expo account; `eas build` runs in Expo's cloud.)
+
+**Clerk note:** the free dev instance (`pk_test_...` key) is fine for testing deploys. Before a real Play Store launch, switch the Clerk app to production (`pk_live_...`, needs a custom domain) and use that key in the build.

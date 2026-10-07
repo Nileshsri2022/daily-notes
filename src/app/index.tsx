@@ -1,98 +1,109 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from "expo-router";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import type { Doc } from "../../convex/_generated/dataModel";
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function Feed() {
+  const router = useRouter();
+  const notes = useQuery(api.notes.list);
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+  const renderItem = ({ item }: { item: Doc<"notes"> }) => (
+    <Pressable
+      style={styles.card}
+      onPress={() =>
+        router.push({ pathname: "/note/[id]", params: { id: item._id } })
+      }
+    >
+      <View style={styles.cardHeader}>
+        <Text style={styles.title} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text
+          style={[styles.badge, item.status === "published" && styles.badgePublished]}
+        >
+          {item.status}
+        </Text>
+      </View>
+      <Text style={styles.snippet} numberOfLines={2}>
+        {item.body.trim() === "" ? "(no content)" : item.body}
+      </Text>
+      <Text style={styles.date}>{new Date(item.updatedAt).toLocaleString()}</Text>
+    </Pressable>
   );
-}
 
-export default function HomeScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      {notes === undefined ? (
+        <Text style={styles.message}>Loading…</Text>
+      ) : (
+        <FlatList
+          data={notes}
+          keyExtractor={(item) => item._id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <Text style={styles.message}>
+              No notes yet.{"\n"}Tap the + button to write your first one.
+            </Text>
+          }
+        />
+      )}
+      <Pressable style={styles.fab} onPress={() => router.push("/editor")}>
+        <Text style={styles.fabText}>+</Text>
+      </Pressable>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+  safe: { flex: 1 },
+  list: { padding: 16, maxWidth: 720, width: "100%", alignSelf: "center" },
+  message: { textAlign: "center", marginTop: 48, fontSize: 15, lineHeight: 22 },
+  card: {
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 12,
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  title: { fontSize: 18, fontWeight: "bold", flexShrink: 1, marginRight: 8 },
+  badge: {
+    fontSize: 11,
+    color: "#777",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 999,
+    overflow: "hidden",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
-  title: {
-    textAlign: 'center',
+  badgePublished: { color: "#1a8917", borderColor: "#1a8917" },
+  snippet: { fontSize: 14, lineHeight: 20, marginBottom: 8 },
+  date: { fontSize: 12 },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#1a8917",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  fabText: { color: "#fff", fontSize: 28, lineHeight: 32 },
 });
