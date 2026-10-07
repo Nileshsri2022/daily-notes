@@ -24,6 +24,8 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
 import { NoteCover } from "@/components/note-cover";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import {
   colors,
@@ -31,6 +33,7 @@ import {
   radius,
   spacing,
   type,
+  type ThemeColors,
 } from "@/constants/theme";
 
 function escapeHtml(text: string): string {
@@ -40,18 +43,8 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
-function parseTags(input: string): string[] {
-  return [
-    ...new Set(
-      input
-        .split(",")
-        .map((t) => t.trim().toLowerCase())
-        .filter(Boolean)
-    ),
-  ].slice(0, 8);
-}
-
 export default function Editor() {
+  const styles = createStyles(colors);
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -106,6 +99,7 @@ function EditorForm({
   initialTags: string[];
 }) {
   const router = useRouter();
+  const styles = createStyles(colors);
   const createNote = useMutation(api.notes.create);
   const updateNote = useMutation(api.notes.update);
   const generateUploadUrl = useMutation(api.notes.generateCoverUploadUrl);
@@ -154,17 +148,6 @@ function EditorForm({
 
   useEffect(() => () => stop(), [stop]);
 
-  const pickCover = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.7,
-      allowsMultipleSelection: false,
-    });
-    if (result.canceled) return;
-    const asset = result.assets[0];
-    setCoverPick({ uri: asset.uri, mimeType: asset.mimeType ?? "image/jpeg" });
-  };
-
   const autosave = useCallback(async () => {
     if (!noteId) return;
     try {
@@ -174,7 +157,7 @@ function EditorForm({
         title,
         body,
         format: "html",
-        tags: parseTags(tagsInput),
+        tags: tagsInput.split(","),
       });
       setDirty(false);
     } catch (err) {
@@ -190,13 +173,24 @@ function EditorForm({
     return () => clearTimeout(timer);
   }, [noteId, dirty, busy, title, tagsInput, contentVersion, autosave]);
 
+  const pickCover = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.7,
+      allowsMultipleSelection: false,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    setCoverPick({ uri: asset.uri, mimeType: asset.mimeType ?? "image/jpeg" });
+  };
+
   const saveAndExit = async () => {
     if (busy) return;
     if (listening) stop();
     setBusy(true);
     try {
       const body = await editor.getHTML();
-      const tags = parseTags(tagsInput);
+      const tags = tagsInput.split(",");
       let savedId: Id<"notes"> | null = noteId ? (noteId as Id<"notes">) : null;
       if (noteId) {
         await updateNote({ id: savedId as Id<"notes">, title, body, format: "html", tags });
@@ -253,11 +247,12 @@ function EditorForm({
               </Pressable>
             </View>
           ) : (
-            <Pressable style={styles.coverButton} onPress={pickCover}>
-              <Text style={[type.button, styles.coverButtonText]}>
-                Add cover image
-              </Text>
-            </Pressable>
+            <Button
+              variant="outline"
+              className="mb-3"
+              title="Add cover image"
+              onPress={pickCover}
+            />
           )}
           <TextInput
             style={[type.displayMd, styles.titleInput]}
@@ -271,10 +266,9 @@ function EditorForm({
             multiline
           />
           <RichText editor={editor} style={styles.richText} />
-          <TextInput
-            style={styles.tagsInput}
+          <Input
+            className="mt-2"
             placeholder="Tags (comma separated)"
-            placeholderTextColor={colors.mutedSoft}
             value={tagsInput}
             onChangeText={(text) => {
               setTagsInput(text);
@@ -307,111 +301,75 @@ function EditorForm({
             </View>
           ) : null}
           <Toolbar editor={editor} />
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              busy && styles.buttonDisabled,
-              pressed && !busy && styles.buttonPressed,
-            ]}
+          <Button
+            className="mt-2 mb-3"
             onPress={saveAndExit}
             disabled={busy}
-          >
-            <Text style={[type.button, styles.buttonText]}>
-              {busy ? "Saving…" : noteId ? "Save changes" : "Save note"}
-            </Text>
-          </Pressable>
+            title={
+              busy ? "Saving…" : noteId ? "Save changes" : "Save note"
+            }
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.canvas },
-  flex: { flex: 1 },
-  container: {
-    flex: 1,
-    paddingHorizontal: spacing.md,
-    maxWidth: maxContentWidth,
-    width: "100%",
-    alignSelf: "center",
-  },
-  message: { textAlign: "center", marginTop: spacing.xxl, color: colors.muted },
-  coverWrap: { marginBottom: spacing.sm },
-  coverPreview: { width: "100%", height: 180, borderRadius: radius.lg },
-  coverRemove: {
-    position: "absolute",
-    top: spacing.xs,
-    right: spacing.xs,
-    width: 28,
-    height: 28,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceDark,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coverRemoveText: { color: colors.onDark, fontSize: 13 },
-  coverButton: {
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: radius.md,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing.sm,
-  },
-  coverButtonText: { color: colors.ink },
-  tagsInput: {
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: colors.ink,
-    marginTop: spacing.xs,
-  },
-  titleInput: {
-    color: colors.ink,
-    paddingVertical: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  richText: { flex: 1 },
-  micRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  micButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    backgroundColor: colors.canvas,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  micButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  micPressed: { backgroundColor: colors.surfaceCard },
-  micIcon: { fontSize: 18 },
-  listeningText: { color: colors.primary, flex: 1 },
-  micHint: { color: colors.mutedSoft, flex: 1 },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: spacing.xs,
-    marginBottom: spacing.sm,
-  },
-  buttonPressed: { backgroundColor: colors.primaryActive },
-  buttonDisabled: { backgroundColor: colors.primaryDisabled },
-  buttonText: { color: colors.onPrimary },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.canvas },
+    flex: { flex: 1 },
+    container: {
+      flex: 1,
+      paddingHorizontal: spacing.md,
+      maxWidth: maxContentWidth,
+      width: "100%",
+      alignSelf: "center",
+    },
+    message: { textAlign: "center", marginTop: spacing.xxl, color: colors.muted },
+    titleInput: {
+      color: colors.ink,
+      paddingVertical: spacing.xs,
+      marginBottom: spacing.xs,
+    },
+    richText: { flex: 1 },
+    micRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+      marginBottom: spacing.xs,
+    },
+    micButton: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: colors.hairline,
+      backgroundColor: colors.canvas,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    micButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    micPressed: { backgroundColor: colors.surfaceCard },
+    micIcon: { fontSize: 18 },
+    listeningText: { color: colors.primary, flex: 1 },
+    micHint: { color: colors.mutedSoft, flex: 1 },
+    coverWrap: { marginBottom: spacing.sm },
+    coverPreview: { width: "100%", height: 180, borderRadius: radius.lg },
+    coverRemove: {
+      position: "absolute",
+      top: spacing.xs,
+      right: spacing.xs,
+      width: 28,
+      height: 28,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surfaceDark,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    coverRemoveText: { color: colors.onDark, fontSize: 13 },
+  });

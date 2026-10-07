@@ -6,7 +6,10 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { colors, fonts } from "@/constants/theme";
+import { verifyInstallation } from "nativewind";
+import { colors } from "@/constants/theme";
+import { useEffect } from "react";
+import "../global.css";
 
 export default function RootLayout() {
   const ready =
@@ -16,6 +19,10 @@ export default function RootLayout() {
 }
 
 function Providers() {
+  useEffect(() => {
+    verifyInstallation();
+  }, []);
+
   const convex = useMemo(
     () =>
       new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
@@ -45,11 +52,6 @@ function RootNavigator() {
       screenOptions={{
         headerStyle: { backgroundColor: colors.canvas },
         headerTintColor: colors.ink,
-        headerTitleStyle: {
-          fontFamily: fonts.display,
-          fontWeight: "400",
-          fontSize: 20,
-        },
         headerShadowVisible: false,
         contentStyle: { backgroundColor: colors.canvas },
         statusBarStyle: "dark",
@@ -85,7 +87,7 @@ function SignOutButton() {
   const { signOut } = useClerk();
   return (
     <Pressable onPress={() => void signOut()} hitSlop={8}>
-      <Text style={styles.signOutText}>Sign out</Text>
+      <Text style={[styles.headerLink, { color: colors.ink }]}>Sign out</Text>
     </Pressable>
   );
 }
@@ -113,12 +115,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  signOutText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.ink,
-    paddingHorizontal: 4,
-  },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
@@ -127,6 +123,5 @@ const styles = StyleSheet.create({
   headerLink: {
     fontSize: 14,
     fontWeight: "500",
-    color: colors.ink,
   },
 });

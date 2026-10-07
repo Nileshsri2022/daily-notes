@@ -3,7 +3,7 @@ import { useWindowDimensions } from "react-native";
 
 import { colors, fonts, spacing, type } from "@/constants/theme";
 
-/** HTML renderer (for rich-text notes) themed to the Claude design system. */
+/** HTML renderer (for rich-text notes). */
 export function HtmlView({ html }: { html: string }) {
   const { width } = useWindowDimensions();
   return (
@@ -22,6 +22,14 @@ export function HtmlView({ html }: { html: string }) {
           fontSize: 15,
           color: colors.primary,
           backgroundColor: colors.surfaceCard,
+        },
+        pre: {
+          fontFamily: fonts.mono,
+          fontSize: 14,
+          color: colors.body,
+          backgroundColor: colors.surfaceCard,
+          borderRadius: 12,
+          padding: 12,
         },
         li: { ...type.bodyLg, color: colors.body },
         blockquote: {

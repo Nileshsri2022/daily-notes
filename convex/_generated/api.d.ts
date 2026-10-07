@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as helpers from "../helpers.js";
 import type * as notes from "../notes.js";
 import type * as trash from "../trash.js";
 
@@ -18,6 +19,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  helpers: typeof helpers;
   notes: typeof notes;
   trash: typeof trash;
 }>;

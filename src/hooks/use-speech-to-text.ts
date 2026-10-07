@@ -1,20 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { requireOptionalNativeModule } from "expo";
 
+import type { SpeechToText } from "./speech-to-text.types";
+
 /**
  * Native implementation — on-device speech recognition via the
  * expo-speech-recognition native module. Requires a development build
  * (it does not run inside Expo Go), so the module resolves to null there
  * and the mic button hides itself.
  */
-
-type SpeechToText = {
-  supported: boolean;
-  listening: boolean;
-  partial: string;
-  toggle: () => void;
-  stop: () => void;
-};
 
 type RecognitionResultEvent = {
   isFinal: boolean;

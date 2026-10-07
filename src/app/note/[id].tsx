@@ -15,16 +15,20 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { MarkdownView } from "@/components/markdown-view";
 import { HtmlView } from "@/components/html-view";
 import { NoteCover } from "@/components/note-cover";
+import { Badge, BadgeText } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   colors,
   maxContentWidth,
   radius,
   spacing,
   type,
+  type ThemeColors,
 } from "@/constants/theme";
 
 export default function NoteView() {
   const router = useRouter();
+  const styles = createStyles(colors);
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -79,29 +83,39 @@ export default function NoteView() {
         <Text style={[type.displayMd, styles.title]}>{note.title}</Text>
         <Text style={[type.caption, styles.meta]}>
           {new Date(note.updatedAt).toLocaleString()} · {note.status}
+          {note.pinned ? " · 📌" : ""}
         </Text>
+        {(note.tags ?? []).length > 0 ? (
+          <View style={styles.tagRow}>
+            {(note.tags ?? []).map((tag) => (
+              <Badge key={tag} variant="outline">
+                <BadgeText>#{tag}</BadgeText>
+              </Badge>
+            ))}
+          </View>
+        ) : null}
         <View style={styles.actions}>
-          <Pressable
-            style={styles.action}
+          <Button
+            variant="outline"
+            size="sm"
+            title="Edit"
             onPress={() => router.push({ pathname: "/editor", params: { id } })}
-          >
-            <Text style={[type.button, styles.actionText]}>Edit</Text>
-          </Pressable>
-          <Pressable style={styles.action} onPress={onTogglePin}>
-            <Text style={[type.button, styles.actionText]}>
-              {note.pinned ? "Unpin" : "Pin"}
-            </Text>
-          </Pressable>
-          <Pressable style={styles.action} onPress={onTogglePublish}>
-            <Text style={[type.button, styles.actionText]}>
-              {note.status === "draft" ? "Publish" : "Unpublish"}
-            </Text>
-          </Pressable>
-          <Pressable style={styles.action} onPress={onDelete}>
-            <Text style={[type.button, styles.actionText, styles.deleteText]}>
-              Delete
-            </Text>
-          </Pressable>
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            title={note.pinned ? "Unpin" : "Pin"}
+            onPress={onTogglePin}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            title={note.status === "draft" ? "Publish" : "Unpublish"}
+            onPress={onTogglePublish}
+          />
+          <Button variant="ghost" size="sm" onPress={onDelete}>
+            <Text style={[type.button, styles.deleteText]}>Delete</Text>
+          </Button>
         </View>
         {note.format === "html" ? (
           <HtmlView html={note.body} />
@@ -113,31 +127,31 @@ export default function NoteView() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.canvas },
-  container: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl,
-    maxWidth: maxContentWidth,
-    width: "100%",
-    alignSelf: "center",
-  },
-  message: { textAlign: "center", marginTop: spacing.xxl, color: colors.muted },
-  coverWrap: { marginBottom: spacing.sm },
-  title: { color: colors.ink, marginBottom: spacing.xs },
-  meta: { color: colors.muted, marginBottom: spacing.lg },
-  actions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-    marginBottom: spacing.xl,
-  },
-  action: {
-    backgroundColor: colors.surfaceCard,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: spacing.xs + 2,
-  },
-  actionText: { color: colors.ink },
-  deleteText: { color: colors.error },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.canvas },
+    container: {
+      padding: spacing.md,
+      paddingBottom: spacing.xxl,
+      maxWidth: maxContentWidth,
+      width: "100%",
+      alignSelf: "center",
+    },
+    message: { textAlign: "center", marginTop: spacing.xxl, color: colors.muted },
+    coverWrap: { marginBottom: spacing.sm },
+    title: { color: colors.ink, marginBottom: spacing.xs },
+    meta: { color: colors.muted, marginBottom: spacing.xs },
+    tagRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.xxs,
+      marginBottom: spacing.sm,
+    },
+    actions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.xs,
+      marginBottom: spacing.xl,
+    },
+    deleteText: { color: colors.error },
+  });

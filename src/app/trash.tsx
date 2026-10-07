@@ -1,8 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
 import {
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -12,56 +10,59 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 
-import { colors, maxContentWidth, radius, spacing, type } from "@/constants/theme";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { themeVars } from "@/theme/theme-provider";
+import { colors, maxContentWidth, spacing } from "@/constants/theme";
 
 export default function Trash() {
   const trashed = useQuery(api.trash.listTrash);
   const restore = useMutation(api.trash.restore);
   const removeNote = useMutation(api.notes.remove);
 
-  const onRestore = async (id: Id<"notes">) => {
-    await restore({ id });
-  };
-
-  const onDeleteForever = async (id: Id<"notes">) => {
-    await removeNote({ id });
-  };
-
   const renderItem = ({ item }: { item: Doc<"notes"> }) => (
-    <View style={styles.card}>
-      <Text style={[type.titleMd, styles.title]} numberOfLines={1}>
-        {item.title}
-      </Text>
-      <Text style={[type.caption, styles.date]}>
-        Deleted {new Date(item.deletedAt ?? item.updatedAt).toLocaleString()}
-      </Text>
-      <View style={styles.actions}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.action,
-            pressed && styles.actionPressed,
-          ]}
-          onPress={() => void onRestore(item._id)}
-        >
-          <Text style={[type.button, { color: colors.ink }]}>Restore</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [
-            styles.action,
-            pressed && styles.actionPressed,
-          ]}
-          onPress={() => void onDeleteForever(item._id)}
-        >
-          <Text style={[type.button, styles.deleteText]}>Delete forever</Text>
-        </Pressable>
-      </View>
-    </View>
+    <Card>
+      <CardContent>
+        <CardTitle numberOfLines={1}>{item.title}</CardTitle>
+        <CardDescription style={{ marginTop: spacing.xxs }}>
+          Deleted {new Date(item.deletedAt ?? item.updatedAt).toLocaleString()}
+        </CardDescription>
+        <View style={styles.actions}>
+          <Button
+            variant="outline"
+            size="sm"
+            title="Restore"
+            onPress={() => void restore({ id: item._id as Id<"notes"> })}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onPress={() => void removeNote({ id: item._id as Id<"notes"> })}
+          >
+            <Text style={{ color: colors.error, fontSize: 14, fontWeight: "500" }}>
+              Delete forever
+            </Text>
+          </Button>
+        </View>
+      </CardContent>
+    </Card>
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+    <SafeAreaView
+      style={[themeVars, { flex: 1, backgroundColor: colors.canvas }]}
+      edges={["top", "left", "right"]}
+    >
       {trashed === undefined ? (
-        <Text style={styles.message}>Loading…</Text>
+        <Text
+          style={{
+            textAlign: "center",
+            marginTop: spacing.xxl,
+            color: colors.muted,
+          }}
+        >
+          Loading…
+        </Text>
       ) : (
         <FlatList
           data={trashed}
@@ -69,7 +70,15 @@ export default function Trash() {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.message}>Trash is empty.</Text>
+            <Text
+              style={{
+                textAlign: "center",
+                marginTop: spacing.xxl,
+                color: colors.muted,
+              }}
+            >
+              Trash is empty.
+            </Text>
           }
         />
       )}
@@ -78,7 +87,6 @@ export default function Trash() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.canvas },
   list: {
     padding: spacing.md,
     gap: spacing.sm,
@@ -86,25 +94,9 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
   },
-  message: { textAlign: "center", marginTop: spacing.xxl, color: colors.muted },
-  card: {
-    backgroundColor: colors.surfaceCard,
-    borderRadius: radius.lg,
-    padding: spacing.md + 4,
-  },
-  title: { color: colors.ink },
-  date: { color: colors.mutedSoft, marginTop: spacing.xxs },
   actions: {
     flexDirection: "row",
     gap: spacing.xs,
     marginTop: spacing.sm,
   },
-  action: {
-    backgroundColor: colors.canvas,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  actionPressed: { backgroundColor: colors.surfaceCreamStrong },
-  deleteText: { color: colors.error },
 });

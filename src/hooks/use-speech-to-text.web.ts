@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** Web implementation — the browser's built-in Web Speech API (Chrome/Edge). */
+import type { SpeechToText } from "./speech-to-text.types";
 
-type SpeechToText = {
-  supported: boolean;
-  listening: boolean;
-  partial: string;
-  toggle: () => void;
-  stop: () => void;
-};
+/** Web implementation — the browser's built-in Web Speech API (Chrome/Edge). */
 
 type AlternativeLike = { transcript: string };
 type ResultLike = { isFinal: boolean; 0: AlternativeLike };

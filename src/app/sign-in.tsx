@@ -8,12 +8,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { colors, radius, spacing, type } from "@/constants/theme";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { themeVars } from "@/theme/theme-provider";
+import { colors, spacing, type } from "@/constants/theme";
 
 type ClerkError = { errors?: { longMessage?: string; message?: string }[] };
 
@@ -157,7 +159,7 @@ export default function SignInScreen() {
           : "Create account";
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[themeVars, { flex: 1, backgroundColor: colors.canvas }]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -179,12 +181,11 @@ export default function SignInScreen() {
           </Text>
 
           {pendingVerification || secondFactor ? (
-            <TextInput
-              style={styles.input}
+            <Input
+              className="mb-3"
               placeholder={
                 secondFactor === "backup_code" ? "Backup code" : "Verification code"
               }
-              placeholderTextColor={colors.mutedSoft}
               value={code}
               onChangeText={setCode}
               autoCapitalize="none"
@@ -194,20 +195,18 @@ export default function SignInScreen() {
             />
           ) : (
             <>
-              <TextInput
-                style={styles.input}
+              <Input
+                className="mb-3"
                 placeholder="Email"
-                placeholderTextColor={colors.mutedSoft}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 autoComplete="email"
                 keyboardType="email-address"
               />
-              <TextInput
-                style={styles.input}
+              <Input
+                className="mb-3"
                 placeholder="Password"
-                placeholderTextColor={colors.mutedSoft}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -215,26 +214,32 @@ export default function SignInScreen() {
             </>
           )}
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text style={{ color: colors.error, fontSize: 13, marginBottom: spacing.sm }}>
+              {error}
+            </Text>
+          ) : null}
 
           {/* Container for Clerk's Smart CAPTCHA on web (nativeID -> id attr).
               Without it Clerk falls back to Invisible CAPTCHA with a console warning. */}
           <View nativeID="clerk-captcha" />
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              busy && styles.buttonDisabled,
-              pressed && !busy && styles.buttonPressed,
-            ]}
+          <Button
+            className="mb-6"
             onPress={submit}
             disabled={busy}
-          >
-            <Text style={[type.button, styles.buttonText]}>{buttonLabel}</Text>
-          </Pressable>
+            title={buttonLabel}
+          />
 
           <Pressable onPress={switchMode}>
-            <Text style={styles.link}>
+            <Text
+              style={{
+                textAlign: "center",
+                color: colors.primary,
+                fontSize: 14,
+                fontWeight: "500",
+              }}
+            >
               {mode === "sign-in"
                 ? "New here? Create an account"
                 : "Already have an account? Sign in"}
@@ -247,7 +252,6 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   container: {
     flexGrow: 1,
@@ -257,43 +261,6 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
   },
-  title: { color: colors.ink, textAlign: "center", marginBottom: spacing.xs },
-  subtitle: {
-    color: colors.muted,
-    textAlign: "center",
-    marginBottom: spacing.lg,
-  },
-  input: {
-    backgroundColor: colors.canvas,
-    color: colors.ink,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: spacing.sm,
-  },
-  error: {
-    color: colors.error,
-    fontSize: 13,
-    marginBottom: spacing.sm,
-  },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing.lg,
-  },
-  buttonPressed: { backgroundColor: colors.primaryActive },
-  buttonDisabled: { backgroundColor: colors.primaryDisabled },
-  buttonText: { color: colors.onPrimary },
-  link: {
-    textAlign: "center",
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: "500",
-  },
+  title: { textAlign: "center", marginBottom: spacing.xs },
+  subtitle: { textAlign: "center", marginBottom: spacing.lg },
 });
