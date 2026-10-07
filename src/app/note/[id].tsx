@@ -12,6 +12,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
+import {
+  colors,
+  maxContentWidth,
+  radius,
+  spacing,
+  type,
+} from "@/constants/theme";
+
 export default function NoteView() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -54,8 +62,8 @@ export default function NoteView() {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>{note.title}</Text>
-        <Text style={styles.meta}>
+        <Text style={[type.displayMd, styles.title]}>{note.title}</Text>
+        <Text style={[type.caption, styles.meta]}>
           {new Date(note.updatedAt).toLocaleString()} · {note.status}
         </Text>
         <View style={styles.actions}>
@@ -63,43 +71,50 @@ export default function NoteView() {
             style={styles.action}
             onPress={() => router.push({ pathname: "/editor", params: { id } })}
           >
-            <Text style={styles.actionText}>Edit</Text>
+            <Text style={[type.button, styles.actionText]}>Edit</Text>
           </Pressable>
           <Pressable style={styles.action} onPress={onTogglePublish}>
-            <Text style={styles.actionText}>
+            <Text style={[type.button, styles.actionText]}>
               {note.status === "draft" ? "Publish" : "Unpublish"}
             </Text>
           </Pressable>
           <Pressable style={styles.action} onPress={onDelete}>
-            <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
+            <Text style={[type.button, styles.actionText, styles.deleteText]}>
+              Delete
+            </Text>
           </Pressable>
         </View>
-        <Text style={styles.body}>{note.body}</Text>
+        <Text style={[type.bodyLg, styles.body]}>{note.body}</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  container: { padding: 16, maxWidth: 720, width: "100%", alignSelf: "center" },
-  message: { textAlign: "center", marginTop: 48, fontSize: 15 },
-  title: { fontSize: 30, fontWeight: "bold", marginBottom: 8 },
-  meta: { fontSize: 12, marginBottom: 16 },
+  safe: { flex: 1, backgroundColor: colors.canvas },
+  container: {
+    padding: spacing.md,
+    paddingBottom: spacing.xxl,
+    maxWidth: maxContentWidth,
+    width: "100%",
+    alignSelf: "center",
+  },
+  message: { textAlign: "center", marginTop: spacing.xxl, color: colors.muted },
+  title: { color: colors.ink, marginBottom: spacing.xs },
+  meta: { color: colors.muted, marginBottom: spacing.lg },
   actions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 24,
+    gap: spacing.xs,
+    marginBottom: spacing.xl,
   },
   action: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: colors.surfaceCard,
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: spacing.xs + 2,
   },
-  actionText: { fontSize: 14 },
-  deleteText: { color: "#c0392b" },
-  body: { fontSize: 17, lineHeight: 28, paddingBottom: 48 },
+  actionText: { color: colors.ink },
+  deleteText: { color: colors.error },
+  body: { color: colors.body, paddingBottom: spacing.lg },
 });

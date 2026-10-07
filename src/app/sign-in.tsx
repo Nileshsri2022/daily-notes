@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { colors, radius, spacing, type } from "@/constants/theme";
+
 type ClerkError = { errors?: { longMessage?: string; message?: string }[] };
 
 export default function SignInScreen() {
@@ -161,8 +163,8 @@ export default function SignInScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={styles.container}>
-          <Text style={styles.title}>DiaryNotes</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[type.displayLg, styles.title]}>DiaryNotes</Text>
+          <Text style={[type.bodySm, styles.subtitle]}>
             {pendingVerification
               ? `Enter the code we sent to ${email.trim()}`
               : secondFactor === "totp"
@@ -182,6 +184,7 @@ export default function SignInScreen() {
               placeholder={
                 secondFactor === "backup_code" ? "Backup code" : "Verification code"
               }
+              placeholderTextColor={colors.mutedSoft}
               value={code}
               onChangeText={setCode}
               autoCapitalize="none"
@@ -194,6 +197,7 @@ export default function SignInScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Email"
+                placeholderTextColor={colors.mutedSoft}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -203,6 +207,7 @@ export default function SignInScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Password"
+                placeholderTextColor={colors.mutedSoft}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -217,11 +222,15 @@ export default function SignInScreen() {
           <View nativeID="clerk-captcha" />
 
           <Pressable
-            style={[styles.button, busy && styles.buttonDisabled]}
+            style={({ pressed }) => [
+              styles.button,
+              busy && styles.buttonDisabled,
+              pressed && !busy && styles.buttonPressed,
+            ]}
             onPress={submit}
             disabled={busy}
           >
-            <Text style={styles.buttonText}>{buttonLabel}</Text>
+            <Text style={[type.button, styles.buttonText]}>{buttonLabel}</Text>
           </Pressable>
 
           <Pressable onPress={switchMode}>
@@ -238,49 +247,53 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
+  safe: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   container: {
     flexGrow: 1,
     justifyContent: "center",
-    padding: 24,
+    padding: spacing.lg,
     maxWidth: 480,
     width: "100%",
     alignSelf: "center",
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 8,
-  },
+  title: { color: colors.ink, textAlign: "center", marginBottom: spacing.xs },
   subtitle: {
-    fontSize: 14,
+    color: colors.muted,
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: spacing.lg,
   },
   input: {
+    backgroundColor: colors.canvas,
+    color: colors.ink,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderColor: colors.hairline,
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   error: {
-    color: "#c0392b",
+    color: colors.error,
     fontSize: 13,
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   button: {
-    backgroundColor: "#1a8917",
-    borderRadius: 8,
-    paddingVertical: 14,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    height: 44,
     alignItems: "center",
-    marginBottom: 16,
+    justifyContent: "center",
+    marginBottom: spacing.lg,
   },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  link: { textAlign: "center", color: "#1a8917", fontSize: 14 },
+  buttonPressed: { backgroundColor: colors.primaryActive },
+  buttonDisabled: { backgroundColor: colors.primaryDisabled },
+  buttonText: { color: colors.onPrimary },
+  link: {
+    textAlign: "center",
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "500",
+  },
 });

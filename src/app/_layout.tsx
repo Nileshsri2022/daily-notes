@@ -6,6 +6,8 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { colors, fonts } from "@/constants/theme";
+
 export default function RootLayout() {
   const ready =
     !!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY &&
@@ -38,7 +40,20 @@ function RootNavigator() {
   const { isSignedIn } = useAuth();
 
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.canvas },
+        headerTintColor: colors.ink,
+        headerTitleStyle: {
+          fontFamily: fonts.display,
+          fontWeight: "400",
+          fontSize: 20,
+        },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: colors.canvas },
+        statusBarStyle: "dark",
+      }}
+    >
       <Stack.Protected guard={!!isSignedIn}>
         <Stack.Screen
           name="index"
@@ -68,8 +83,8 @@ function SignOutButton() {
 
 function SetupRequired() {
   return (
-    <View style={styles.center}>
-      <Text style={styles.message}>
+    <View style={[styles.center, { backgroundColor: colors.canvas }]}>
+      <Text style={[styles.message, { color: colors.muted }]}>
         Setup required. Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local,
         then run `npx convex dev` to create EXPO_PUBLIC_CONVEX_URL.
       </Text>
@@ -91,7 +106,8 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     fontSize: 14,
-    color: "#666",
+    fontWeight: "500",
+    color: colors.ink,
     paddingHorizontal: 4,
   },
 });

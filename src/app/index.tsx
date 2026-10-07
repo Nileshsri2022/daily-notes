@@ -11,31 +11,45 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import {
+  colors,
+  maxContentWidth,
+  radius,
+  spacing,
+  type,
+} from "@/constants/theme";
+
 export default function Feed() {
   const router = useRouter();
   const notes = useQuery(api.notes.list);
 
   const renderItem = ({ item }: { item: Doc<"notes"> }) => (
     <Pressable
-      style={styles.card}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={() =>
         router.push({ pathname: "/note/[id]", params: { id: item._id } })
       }
     >
-      <View style={styles.cardHeader}>
-        <Text style={styles.title} numberOfLines={1}>
-          {item.title}
+      <Text style={[type.displaySm, styles.title]} numberOfLines={2}>
+        {item.title}
+      </Text>
+      <Text style={[type.bodySm, styles.snippet]} numberOfLines={2}>
+        {item.body.trim() === "" ? "(no content)" : item.body}
+      </Text>
+      <View style={styles.cardFooter}>
+        <Text style={[type.caption, styles.date]}>
+          {new Date(item.updatedAt).toLocaleString()}
         </Text>
         <Text
-          style={[styles.badge, item.status === "published" && styles.badgePublished]}
+          style={[
+            type.captionUpper,
+            styles.badge,
+            item.status === "published" && styles.badgePublished,
+          ]}
         >
           {item.status}
         </Text>
       </View>
-      <Text style={styles.snippet} numberOfLines={2}>
-        {item.body.trim() === "" ? "(no content)" : item.body}
-      </Text>
-      <Text style={styles.date}>{new Date(item.updatedAt).toLocaleString()}</Text>
     </Pressable>
   );
 
@@ -50,13 +64,21 @@ export default function Feed() {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.message}>
-              No notes yet.{"\n"}Tap the + button to write your first one.
-            </Text>
+            <View style={styles.empty}>
+              <Text style={[type.displaySm, styles.emptyTitle]}>
+                Nothing here yet
+              </Text>
+              <Text style={[type.bodySm, styles.emptyBody]}>
+                Tap the + button to write your first note.
+              </Text>
+            </View>
           }
         />
       )}
-      <Pressable style={styles.fab} onPress={() => router.push("/editor")}>
+      <Pressable
+        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        onPress={() => router.push("/editor")}
+      >
         <Text style={styles.fabText}>+</Text>
       </Pressable>
     </SafeAreaView>
@@ -64,46 +86,57 @@ export default function Feed() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  list: { padding: 16, maxWidth: 720, width: "100%", alignSelf: "center" },
-  message: { textAlign: "center", marginTop: 48, fontSize: 15, lineHeight: 22 },
-  card: {
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 12,
+  safe: { flex: 1, backgroundColor: colors.canvas },
+  list: {
+    padding: spacing.md,
+    paddingBottom: spacing.xxl + 40,
+    gap: spacing.sm,
+    maxWidth: maxContentWidth,
+    width: "100%",
+    alignSelf: "center",
   },
-  cardHeader: {
+  card: {
+    backgroundColor: colors.surfaceCard,
+    borderRadius: radius.lg,
+    padding: spacing.md + 4,
+  },
+  cardPressed: { backgroundColor: colors.surfaceCreamStrong },
+  title: { color: colors.ink },
+  snippet: { color: colors.body, marginTop: spacing.xs },
+  cardFooter: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 6,
+    marginTop: spacing.sm,
   },
-  title: { fontSize: 18, fontWeight: "bold", flexShrink: 1, marginRight: 8 },
+  date: { color: colors.mutedSoft },
   badge: {
-    fontSize: 11,
-    color: "#777",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 999,
+    color: colors.muted,
+    backgroundColor: colors.canvas,
+    borderRadius: radius.pill,
     overflow: "hidden",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
-  badgePublished: { color: "#1a8917", borderColor: "#1a8917" },
-  snippet: { fontSize: 14, lineHeight: 20, marginBottom: 8 },
-  date: { fontSize: 12 },
+  badgePublished: {
+    color: colors.onPrimary,
+    backgroundColor: colors.primary,
+  },
+  empty: { alignItems: "center", marginTop: spacing.xxl },
+  emptyTitle: { color: colors.ink, textAlign: "center" },
+  emptyBody: { color: colors.muted, textAlign: "center", marginTop: spacing.xs },
+  message: { textAlign: "center", marginTop: spacing.xxl, color: colors.muted },
   fab: {
     position: "absolute",
-    right: 20,
-    bottom: 24,
+    right: spacing.md + 4,
+    bottom: spacing.lg,
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: "#1a8917",
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-  fabText: { color: "#fff", fontSize: 28, lineHeight: 32 },
+  fabPressed: { backgroundColor: colors.primaryActive },
+  fabText: { color: colors.onPrimary, fontSize: 28, lineHeight: 32 },
 });

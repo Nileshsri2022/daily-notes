@@ -16,6 +16,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
+import {
+  colors,
+  maxContentWidth,
+  radius,
+  spacing,
+  type,
+} from "@/constants/theme";
+
 export default function Editor() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -76,15 +84,17 @@ export default function Editor() {
       >
         <ScrollView contentContainerStyle={styles.container}>
           <TextInput
-            style={styles.titleInput}
+            style={[type.displayMd, styles.titleInput]}
             placeholder="Title"
+            placeholderTextColor={colors.mutedSoft}
             value={title}
             onChangeText={setTitle}
             multiline
           />
           <TextInput
-            style={styles.bodyInput}
+            style={[type.bodyLg, styles.bodyInput]}
             placeholder="Start writing…"
+            placeholderTextColor={colors.mutedSoft}
             value={body}
             onChangeText={setBody}
             multiline
@@ -96,7 +106,7 @@ export default function Editor() {
               onPress={save}
               disabled={busy}
             >
-              <Text style={styles.buttonText}>
+              <Text style={[type.button, styles.buttonText]}>
                 {busy ? "Saving…" : id ? "Save changes" : "Save note"}
               </Text>
             </Pressable>
@@ -108,31 +118,37 @@ export default function Editor() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
+  safe: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
-  container: { flexGrow: 1, padding: 16, maxWidth: 720, width: "100%", alignSelf: "center" },
-  message: { textAlign: "center", marginTop: 48, fontSize: 15 },
+  container: {
+    flexGrow: 1,
+    padding: spacing.md,
+    paddingBottom: spacing.lg,
+    maxWidth: maxContentWidth,
+    width: "100%",
+    alignSelf: "center",
+  },
+  message: { textAlign: "center", marginTop: spacing.xxl, color: colors.muted },
   titleInput: {
-    fontSize: 26,
-    fontWeight: "bold",
-    marginBottom: 12,
-    paddingVertical: 4,
+    color: colors.ink,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
   },
   bodyInput: {
-    fontSize: 16,
-    lineHeight: 24,
+    color: colors.body,
     minHeight: 240,
     flexGrow: 1,
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
   },
-  footer: { paddingTop: 8 },
+  footer: { paddingTop: spacing.sm },
   button: {
-    backgroundColor: "#1a8917",
-    borderRadius: 8,
-    paddingVertical: 14,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    height: 48,
     alignItems: "center",
-    marginBottom: 24,
+    justifyContent: "center",
+    marginBottom: spacing.lg,
   },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  buttonDisabled: { backgroundColor: colors.primaryDisabled },
+  buttonText: { color: colors.onPrimary },
 });
