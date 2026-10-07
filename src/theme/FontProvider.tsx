@@ -1,11 +1,11 @@
-import React from 'react';
-import { useFonts } from 'expo-font';
 import { flags } from '@/constants/flags';
+import { useFonts } from 'expo-font';
+import React from 'react';
 
 // Map of font families to require statements (replace with actual paths or Base64 if needed)
 const fontMap = {
-  Inter: require('../assets/fonts/Inter-Regular.ttf'),
-  Merriweather: require('../assets/fonts/Merriweather-Regular.ttf'),
+  Inter: require('../../assets/fonts/Inter-Regular.ttf'),
+  Merriweather: require('../../assets/fonts/Merriweather-Regular.ttf'),
 };
 
 /**
