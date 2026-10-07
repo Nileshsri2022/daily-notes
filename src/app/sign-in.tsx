@@ -33,6 +33,9 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [pendingVerification, setPendingVerification] = useState(false);
+  const [secondFactor, setSecondFactor] = useState<
+    "totp" | "phone_code" | "email_code" | "backup_code" | null
+  >(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,6 +48,20 @@ export default function SignInScreen() {
     setBusy(true);
     setError("");
     try {
+      if (mode === "sign-in" && secondFactor) {
+        const result = await signIn.attemptSecondFactor({
+          strategy: secondFactor,
+          code: code.trim(),
+        });
+        if (result.status === "complete") {
+          await setSignInSession({ session: result.createdSessionId });
+        } else {
+          setError(`Sign-in is not complete (status: ${result.status}).`);
+          setBusy(false);
+        }
+        return;
+      }
+
       if (mode === "sign-in") {
         const result = await signIn.create({
           identifier: email.trim(),
@@ -52,6 +69,32 @@ export default function SignInScreen() {
         });
         if (result.status === "complete") {
           await setSignInSession({ session: result.createdSessionId });
+        } else if (result.status === "needs_second_factor") {
+          const factors = (signIn.supportedSecondFactors ?? []) as {
+            strategy: string;
+          }[];
+          const has = (name: string) => factors.some((f) => f.strategy === name);
+          const strategy = has("totp")
+            ? ("totp" as const)
+            : has("phone_code")
+              ? ("phone_code" as const)
+              : has("email_code")
+                ? ("email_code" as const)
+                : has("backup_code")
+                  ? ("backup_code" as const)
+                  : null;
+          if (!strategy) {
+            setError(
+              "Two-step verification is required, but no supported method is available."
+            );
+            setBusy(false);
+            return;
+          }
+          if (strategy === "phone_code" || strategy === "email_code") {
+            await signIn.prepareSecondFactor({ strategy });
+          }
+          setSecondFactor(strategy);
+          setBusy(false);
         } else {
           setError(`Sign-in is not complete (status: ${result.status}).`);
           setBusy(false);
@@ -92,19 +135,24 @@ export default function SignInScreen() {
     setMode(mode === "sign-in" ? "sign-up" : "sign-in");
     setError("");
     setPendingVerification(false);
+    setSecondFactor(null);
   };
 
-  const buttonLabel = pendingVerification
+  const buttonLabel = secondFactor
     ? busy
       ? "Verifying…"
-      : "Verify code"
-    : mode === "sign-in"
+      : "Verify"
+    : pendingVerification
       ? busy
-        ? "Signing in…"
-        : "Sign in"
-      : busy
-        ? "Creating account…"
-        : "Create account";
+        ? "Verifying…"
+        : "Verify code"
+      : mode === "sign-in"
+        ? busy
+          ? "Signing in…"
+          : "Sign in"
+        : busy
+          ? "Creating account…"
+          : "Create account";
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -117,19 +165,29 @@ export default function SignInScreen() {
           <Text style={styles.subtitle}>
             {pendingVerification
               ? `Enter the code we sent to ${email.trim()}`
-              : mode === "sign-in"
-                ? "Sign in to your notes"
-                : "Create your account"}
+              : secondFactor === "totp"
+                ? "Enter the 6-digit code from your authenticator app"
+                : secondFactor === "backup_code"
+                  ? "Enter one of your backup codes"
+                  : secondFactor
+                    ? "Enter the code we sent you"
+                    : mode === "sign-in"
+                      ? "Sign in to your notes"
+                      : "Create your account"}
           </Text>
 
-          {pendingVerification ? (
+          {pendingVerification || secondFactor ? (
             <TextInput
               style={styles.input}
-              placeholder="Verification code"
+              placeholder={
+                secondFactor === "backup_code" ? "Backup code" : "Verification code"
+              }
               value={code}
               onChangeText={setCode}
               autoCapitalize="none"
-              keyboardType="number-pad"
+              keyboardType={
+                secondFactor === "backup_code" ? "default" : "number-pad"
+              }
             />
           ) : (
             <>
