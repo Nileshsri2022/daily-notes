@@ -10,6 +10,7 @@ export default defineSchema({
     coverStorageId: v.optional(v.id("_storage")),
     tags: v.optional(v.array(v.string())),
     pinned: v.optional(v.boolean()),
+    deletedAt: v.optional(v.number()),
     status: v.union(v.literal("draft"), v.literal("published")),
     updatedAt: v.number(),
   }).index("by_user", ["clerkUserId", "updatedAt"]),

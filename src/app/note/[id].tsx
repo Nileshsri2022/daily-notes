@@ -29,13 +29,13 @@ export default function NoteView() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const note = useQuery(api.notes.get, id ? { id: id as Id<"notes"> } : "skip");
-  const removeNote = useMutation(api.notes.remove);
+  const softDelete = useMutation(api.trash.softDelete);
   const setStatus = useMutation(api.notes.setStatus);
   const setPinned = useMutation(api.notes.setPinned);
 
   const onDelete = async () => {
     if (!id) return;
-    await removeNote({ id: id as Id<"notes"> });
+    await softDelete({ id: id as Id<"notes"> });
     router.replace("/");
   };
 

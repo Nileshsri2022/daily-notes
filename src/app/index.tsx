@@ -38,6 +38,7 @@ export default function Feed() {
           ? notes.filter((note) => (note.tags ?? []).includes(activeTag))
           : notes
       )
+        .filter((note) => note.deletedAt === undefined)
         .filter((note) => {
           const q = query.trim().toLowerCase();
           if (!q) return true;

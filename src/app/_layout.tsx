@@ -1,6 +1,6 @@
 import { ClerkProvider, useAuth, useClerk } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useMemo } from "react";
@@ -38,6 +38,7 @@ function Providers() {
 
 function RootNavigator() {
   const { isSignedIn } = useAuth();
+  const router = useRouter();
 
   return (
     <Stack
@@ -59,11 +60,19 @@ function RootNavigator() {
           name="index"
           options={{
             title: "DiaryNotes",
-            headerRight: () => <SignOutButton />,
+            headerRight: () => (
+              <View style={styles.headerActions}>
+                <Pressable onPress={() => router.push("/trash")} hitSlop={8}>
+                  <Text style={styles.headerLink}>Trash</Text>
+                </Pressable>
+                <SignOutButton />
+              </View>
+            ),
           }}
         />
         <Stack.Screen name="editor" options={{ title: "Edit note" }} />
         <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
+        <Stack.Screen name="trash" options={{ title: "Trash" }} />
       </Stack.Protected>
       <Stack.Protected guard={!isSignedIn}>
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
@@ -109,5 +118,15 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: colors.ink,
     paddingHorizontal: 4,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  headerLink: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.ink,
   },
 });
