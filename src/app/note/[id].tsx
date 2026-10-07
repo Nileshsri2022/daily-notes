@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
+import { MarkdownView } from "@/components/markdown-view";
 import {
   colors,
   maxContentWidth,
@@ -84,7 +85,7 @@ export default function NoteView() {
             </Text>
           </Pressable>
         </View>
-        <Text style={[type.bodyLg, styles.body]}>{note.body}</Text>
+        <MarkdownView markdown={note.body} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -116,5 +117,4 @@ const styles = StyleSheet.create({
   },
   actionText: { color: colors.ink },
   deleteText: { color: colors.error },
-  body: { color: colors.body, paddingBottom: spacing.lg },
 });

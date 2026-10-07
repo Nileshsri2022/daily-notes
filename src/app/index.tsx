@@ -34,7 +34,9 @@ export default function Feed() {
         {item.title}
       </Text>
       <Text style={[type.bodySm, styles.snippet]} numberOfLines={2}>
-        {item.body.trim() === "" ? "(no content)" : item.body}
+        {item.body.trim() === ""
+          ? "(no content)"
+          : item.body.replace(/[*#`>[\]()%_]/g, "").trim()}
       </Text>
       <View style={styles.cardFooter}>
         <Text style={[type.caption, styles.date]}>

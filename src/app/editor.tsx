@@ -110,7 +110,7 @@ export default function Editor() {
           />
           <TextInput
             style={[type.bodyLg, styles.bodyInput]}
-            placeholder="Start writing…"
+            placeholder="Start writing… Markdown supported"
             placeholderTextColor={colors.mutedSoft}
             value={body}
             onChangeText={setBody}
