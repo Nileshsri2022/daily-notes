@@ -55,9 +55,19 @@ npm run android    # Android emulator, or Expo Go on a phone
 npm run ios        # macOS only
 ```
 
-## v1 scope
+## Features
 
-Sign up / sign in, create and edit plain-text notes, draft/published toggle, delete, responsive feed. Rich text editor, images, comments, search — later versions.
+- Email + password auth with 2FA support (Clerk)
+- Rich text editor (10Tap) with formatting toolbar; plain notes render as markdown
+- Cover images via Convex file storage
+- Tags with feed filter chips
+- Pin notes (pinned notes sort first)
+- Search across title, body, and tags
+- Auto-save while editing existing notes
+- Draft / published toggle
+- Soft delete with Trash screen (restore or delete forever)
+- Speech-to-text dictation (Web Speech API on web; on-device on native dev builds)
+- Responsive web + Android + iOS from one codebase
 
 ## Deploying
 
