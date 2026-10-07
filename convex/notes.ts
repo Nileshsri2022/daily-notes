@@ -65,6 +65,34 @@ export const update = mutation({
   },
 });
 
+export const coverUrl = query({
+  args: { id: v.id("_storage") },
+  handler: async (ctx, { id }) => await ctx.storage.getUrl(id),
+});
+
+export const generateCoverUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not signed in");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const setCover = mutation({
+  args: { id: v.id("notes"), coverStorageId: v.optional(v.id("_storage")) },
+  handler: async (ctx, { id, coverStorageId }) => {
+    const userId = await currentUserId(ctx);
+    if (!userId) throw new Error("Not signed in");
+    const note = await ctx.db.get(id);
+    if (!note || note.clerkUserId !== userId) throw new Error("Note not found");
+    if (note.coverStorageId && note.coverStorageId !== coverStorageId) {
+      await ctx.storage.delete(note.coverStorageId);
+    }
+    await ctx.db.patch(id, { coverStorageId: coverStorageId ?? undefined });
+  },
+});
+
 export const setStatus = mutation({
   args: {
     id: v.id("notes"),
@@ -86,6 +114,7 @@ export const remove = mutation({
     if (!userId) throw new Error("Not signed in");
     const note = await ctx.db.get(id);
     if (!note || note.clerkUserId !== userId) throw new Error("Note not found");
+    if (note.coverStorageId) await ctx.storage.delete(note.coverStorageId);
     await ctx.db.delete(id);
   },
 });

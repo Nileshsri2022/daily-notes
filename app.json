@@ -35,6 +35,12 @@
       ],
       "expo-secure-store",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow DiaryNotes to pick a cover photo."
+        }
+      ],
+      [
         "expo-speech-recognition",
         {
           "microphonePermission": "Allow DiaryNotes to use the microphone.",

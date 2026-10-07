@@ -14,6 +14,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 
 import { MarkdownView } from "@/components/markdown-view";
 import { HtmlView } from "@/components/html-view";
+import { NoteCover } from "@/components/note-cover";
 import {
   colors,
   maxContentWidth,
@@ -64,6 +65,11 @@ export default function NoteView() {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.container}>
+        {note.coverStorageId ? (
+          <View style={styles.coverWrap}>
+            <NoteCover storageId={note.coverStorageId} height={200} rounded />
+          </View>
+        ) : null}
         <Text style={[type.displayMd, styles.title]}>{note.title}</Text>
         <Text style={[type.caption, styles.meta]}>
           {new Date(note.updatedAt).toLocaleString()} · {note.status}
@@ -106,6 +112,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   message: { textAlign: "center", marginTop: spacing.xxl, color: colors.muted },
+  coverWrap: { marginBottom: spacing.sm },
   title: { color: colors.ink, marginBottom: spacing.xs },
   meta: { color: colors.muted, marginBottom: spacing.lg },
   actions: {

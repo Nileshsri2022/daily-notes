@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { NoteCover } from "@/components/note-cover";
 import {
   colors,
   maxContentWidth,
@@ -30,33 +31,38 @@ export default function Feed() {
         router.push({ pathname: "/note/[id]", params: { id: item._id } })
       }
     >
-      <Text style={[type.displaySm, styles.title]} numberOfLines={2}>
-        {item.title}
-      </Text>
-      <Text style={[type.bodySm, styles.snippet]} numberOfLines={2}>
-        {item.body.trim() === ""
-          ? "(no content)"
-          : (item.format === "html"
-              ? item.body.replace(/<[^>]*>/g, " ")
-              : item.body
-            )
+      {item.coverStorageId ? (
+        <NoteCover storageId={item.coverStorageId} height={120} />
+      ) : null}
+      <View style={styles.cardBody}>
+        <Text style={[type.displaySm, styles.title]} numberOfLines={2}>
+          {item.title}
+        </Text>
+        <Text style={[type.bodySm, styles.snippet]} numberOfLines={2}>
+          {item.body.trim() === ""
+            ? "(no content)"
+            : (item.format === "html"
+                ? item.body.replace(/<[^>]*>/g, " ")
+                : item.body
+              )
               .replace(/[*#`>[\]()%_]/g, " ")
               .replace(/\s+/g, " ")
               .trim()}
-      </Text>
-      <View style={styles.cardFooter}>
-        <Text style={[type.caption, styles.date]}>
-          {new Date(item.updatedAt).toLocaleString()}
         </Text>
-        <Text
-          style={[
-            type.captionUpper,
-            styles.badge,
-            item.status === "published" && styles.badgePublished,
-          ]}
-        >
-          {item.status}
-        </Text>
+        <View style={styles.cardFooter}>
+          <Text style={[type.caption, styles.date]}>
+            {new Date(item.updatedAt).toLocaleString()}
+          </Text>
+          <Text
+            style={[
+              type.captionUpper,
+              styles.badge,
+              item.status === "published" && styles.badgePublished,
+            ]}
+          >
+            {item.status}
+          </Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -106,9 +112,10 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.lg,
-    padding: spacing.md + 4,
+    overflow: "hidden",
   },
   cardPressed: { backgroundColor: colors.surfaceCreamStrong },
+  cardBody: { padding: spacing.md + 4 },
   title: { color: colors.ink },
   snippet: { color: colors.body, marginTop: spacing.xs },
   cardFooter: {

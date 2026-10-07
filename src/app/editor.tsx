@@ -14,13 +14,16 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  Image,
   View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
+import { NoteCover } from "@/components/note-cover";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import {
   colors,
@@ -72,6 +75,7 @@ export default function Editor() {
       noteId={id}
       initialTitle={id && existing ? existing.title : ""}
       initialHtml={initialHtml}
+      initialCoverId={existing?.coverStorageId}
     />
   );
 }
@@ -80,14 +84,18 @@ function EditorForm({
   noteId,
   initialTitle,
   initialHtml,
+  initialCoverId,
 }: {
   noteId?: string;
   initialTitle: string;
   initialHtml: string;
+  initialCoverId?: Id<"_storage">;
 }) {
   const router = useRouter();
   const createNote = useMutation(api.notes.create);
   const updateNote = useMutation(api.notes.update);
+  const generateUploadUrl = useMutation(api.notes.generateCoverUploadUrl);
+  const setCover = useMutation(api.notes.setCover);
 
   const editor = useEditorBridge({
     autofocus: false,
@@ -97,6 +105,11 @@ function EditorForm({
 
   const [title, setTitle] = useState(initialTitle);
   const [busy, setBusy] = useState(false);
+  const [coverPick, setCoverPick] = useState<{
+    uri: string;
+    mimeType: string;
+  } | null>(null);
+  const [coverRemoved, setCoverRemoved] = useState(false);
 
   const appendSegment = useCallback(
     (segment: string) => {
@@ -117,16 +130,42 @@ function EditorForm({
 
   useEffect(() => () => stop(), [stop]);
 
+  const pickCover = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.7,
+      allowsMultipleSelection: false,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    setCoverPick({ uri: asset.uri, mimeType: asset.mimeType ?? "image/jpeg" });
+  };
+
   const save = async () => {
     if (busy) return;
     if (listening) stop();
     setBusy(true);
     try {
       const body = await editor.getHTML();
+      let savedId: Id<"notes"> | null = noteId ? (noteId as Id<"notes">) : null;
       if (noteId) {
         await updateNote({ id: noteId as Id<"notes">, title, body, format: "html" });
       } else {
-        await createNote({ title, body, format: "html" });
+        savedId = await createNote({ title, body, format: "html" });
+      }
+      if (!savedId) throw new Error("Could not save note");
+      if (coverPick) {
+        const uploadUrl = await generateUploadUrl({});
+        const file = await (await fetch(coverPick.uri)).blob();
+        const res = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": coverPick.mimeType },
+          body: file,
+        });
+        const { storageId } = (await res.json()) as { storageId: Id<"_storage"> };
+        await setCover({ id: savedId, coverStorageId: storageId });
+      } else if (coverRemoved && noteId) {
+        await setCover({ id: savedId });
       }
       router.replace("/");
     } catch (err) {
@@ -142,6 +181,34 @@ function EditorForm({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={styles.container}>
+          {coverPick ? (
+            <View style={styles.coverWrap}>
+              <Image
+                source={{ uri: coverPick.uri }}
+                style={styles.coverPreview}
+                resizeMode="cover"
+              />
+              <Pressable style={styles.coverRemove} onPress={() => setCoverPick(null)}>
+                <Text style={styles.coverRemoveText}>✕</Text>
+              </Pressable>
+            </View>
+          ) : initialCoverId && !coverRemoved ? (
+            <View style={styles.coverWrap}>
+              <NoteCover storageId={initialCoverId} height={180} rounded />
+              <Pressable
+                style={styles.coverRemove}
+                onPress={() => setCoverRemoved(true)}
+              >
+                <Text style={styles.coverRemoveText}>✕</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable style={styles.coverButton} onPress={pickCover}>
+              <Text style={[type.button, styles.coverButtonText]}>
+                Add cover image
+              </Text>
+            </Pressable>
+          )}
           <TextInput
             style={[type.displayMd, styles.titleInput]}
             placeholder="Title"
@@ -205,6 +272,30 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   message: { textAlign: "center", marginTop: spacing.xxl, color: colors.muted },
+  coverWrap: { marginBottom: spacing.sm },
+  coverPreview: { width: "100%", height: 180, borderRadius: radius.lg },
+  coverRemove: {
+    position: "absolute",
+    top: spacing.xs,
+    right: spacing.xs,
+    width: 28,
+    height: 28,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceDark,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coverRemoveText: { color: colors.onDark, fontSize: 13 },
+  coverButton: {
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: radius.md,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.sm,
+  },
+  coverButtonText: { color: colors.ink },
   titleInput: {
     color: colors.ink,
     paddingVertical: spacing.xs,
