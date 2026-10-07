@@ -5,11 +5,13 @@ import type { Doc } from "../../convex/_generated/dataModel";
 import {
   FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useState } from "react";
 
 import { NoteCover } from "@/components/note-cover";
 import {
@@ -23,6 +25,15 @@ import {
 export default function Feed() {
   const router = useRouter();
   const notes = useQuery(api.notes.list);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  const allTags = notes
+    ? [...new Set(notes.flatMap((note) => note.tags ?? []))]
+    : [];
+  const visibleNotes =
+    notes && activeTag
+      ? notes.filter((note) => (note.tags ?? []).includes(activeTag))
+      : notes;
 
   const renderItem = ({ item }: { item: Doc<"notes"> }) => (
     <Pressable
@@ -72,22 +83,45 @@ export default function Feed() {
       {notes === undefined ? (
         <Text style={styles.message}>Loading…</Text>
       ) : (
-        <FlatList
-          data={notes}
-          keyExtractor={(item) => item._id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={[type.displaySm, styles.emptyTitle]}>
-                Nothing here yet
+        <View style={styles.flex}>
+          {allTags.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chips}
+            >
+              {allTags.map((tag) => (
+                <Pressable
+                  key={tag}
+                  style={[styles.chip, activeTag === tag && styles.chipActive]}
+                  onPress={() => setActiveTag(activeTag === tag ? null : tag)}
+                >
+                  <Text
+                    style={[
+                      type.caption,
+                      { color: activeTag === tag ? colors.ink : colors.muted },
+                    ]}
+                  >
+                    #{tag}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
+          <FlatList
+            data={visibleNotes}
+            keyExtractor={(item) => item._id}
+            renderItem={renderItem}
+            contentContainerStyle={styles.list}
+            ListEmptyComponent={
+              <Text style={styles.message}>
+                {activeTag
+                  ? `No notes tagged #${activeTag}.`
+                  : "No notes yet.\nTap the + button to write your first one."}
               </Text>
-              <Text style={[type.bodySm, styles.emptyBody]}>
-                Tap the + button to write your first note.
-              </Text>
-            </View>
-          }
-        />
+            }
+          />
+        </View>
       )}
       <Pressable
         style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
@@ -101,6 +135,20 @@ export default function Feed() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
+  chips: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    gap: spacing.xs,
+  },
+  chip: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  chipActive: { backgroundColor: colors.surfaceCard, borderColor: colors.surfaceCard },
   list: {
     padding: spacing.md,
     paddingBottom: spacing.xxl + 40,

@@ -32,10 +32,16 @@ export const get = query({
 });
 
 const bodyFormat = v.optional(v.union(v.literal("markdown"), v.literal("html")));
+const tagsArg = v.optional(v.array(v.string()));
+
+function normalizeTags(tags: string[] | undefined): string[] {
+  if (!tags) return [];
+  return [...new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(0, 8);
+}
 
 export const create = mutation({
-  args: { title: v.string(), body: v.string(), format: bodyFormat },
-  handler: async (ctx, { title, body, format }) => {
+  args: { title: v.string(), body: v.string(), format: bodyFormat, tags: tagsArg },
+  handler: async (ctx, { title, body, format, tags }) => {
     const userId = await currentUserId(ctx);
     if (!userId) throw new Error("Not signed in");
     return await ctx.db.insert("notes", {
@@ -43,6 +49,7 @@ export const create = mutation({
       title: title.trim() || "Untitled",
       body,
       format: format ?? "markdown",
+      tags: normalizeTags(tags),
       status: "draft",
       updatedAt: Date.now(),
     });
@@ -50,8 +57,8 @@ export const create = mutation({
 });
 
 export const update = mutation({
-  args: { id: v.id("notes"), title: v.string(), body: v.string(), format: bodyFormat },
-  handler: async (ctx, { id, title, body, format }) => {
+  args: { id: v.id("notes"), title: v.string(), body: v.string(), format: bodyFormat, tags: tagsArg },
+  handler: async (ctx, { id, title, body, format, tags }) => {
     const userId = await currentUserId(ctx);
     if (!userId) throw new Error("Not signed in");
     const note = await ctx.db.get(id);
@@ -60,6 +67,7 @@ export const update = mutation({
       title: title.trim() || "Untitled",
       body,
       format: format ?? "markdown",
+      tags: normalizeTags(tags),
       updatedAt: Date.now(),
     });
   },

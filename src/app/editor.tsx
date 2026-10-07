@@ -76,6 +76,7 @@ export default function Editor() {
       initialTitle={id && existing ? existing.title : ""}
       initialHtml={initialHtml}
       initialCoverId={existing?.coverStorageId}
+      initialTags={existing?.tags ?? []}
     />
   );
 }
@@ -85,11 +86,13 @@ function EditorForm({
   initialTitle,
   initialHtml,
   initialCoverId,
+  initialTags,
 }: {
   noteId?: string;
   initialTitle: string;
   initialHtml: string;
   initialCoverId?: Id<"_storage">;
+  initialTags: string[];
 }) {
   const router = useRouter();
   const createNote = useMutation(api.notes.create);
@@ -104,6 +107,7 @@ function EditorForm({
   });
 
   const [title, setTitle] = useState(initialTitle);
+  const [tagsInput, setTagsInput] = useState(initialTags.join(", "));
   const [busy, setBusy] = useState(false);
   const [coverPick, setCoverPick] = useState<{
     uri: string;
@@ -147,11 +151,19 @@ function EditorForm({
     setBusy(true);
     try {
       const body = await editor.getHTML();
+      const tags = [
+        ...new Set(
+          tagsInput
+            .split(",")
+            .map((t) => t.trim().toLowerCase())
+            .filter(Boolean)
+        ),
+      ].slice(0, 8);
       let savedId: Id<"notes"> | null = noteId ? (noteId as Id<"notes">) : null;
       if (noteId) {
-        await updateNote({ id: noteId as Id<"notes">, title, body, format: "html" });
+        await updateNote({ id: noteId as Id<"notes">, title, body, format: "html", tags });
       } else {
-        savedId = await createNote({ title, body, format: "html" });
+        savedId = await createNote({ title, body, format: "html", tags });
       }
       if (!savedId) throw new Error("Could not save note");
       if (coverPick) {
@@ -218,6 +230,15 @@ function EditorForm({
             multiline
           />
           <RichText editor={editor} style={styles.richText} />
+          <TextInput
+            style={styles.tagsInput}
+            placeholder="Tags (comma separated)"
+            placeholderTextColor={colors.mutedSoft}
+            value={tagsInput}
+            onChangeText={setTagsInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
           {micSupported ? (
             <View style={styles.micRow}>
               <Pressable
@@ -296,6 +317,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   coverButtonText: { color: colors.ink },
+  tagsInput: {
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.ink,
+    marginTop: spacing.xs,
+  },
   titleInput: {
     color: colors.ink,
     paddingVertical: spacing.xs,
