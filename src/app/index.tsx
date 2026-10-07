@@ -36,7 +36,13 @@ export default function Feed() {
       <Text style={[type.bodySm, styles.snippet]} numberOfLines={2}>
         {item.body.trim() === ""
           ? "(no content)"
-          : item.body.replace(/[*#`>[\]()%_]/g, "").trim()}
+          : (item.format === "html"
+              ? item.body.replace(/<[^>]*>/g, " ")
+              : item.body
+            )
+              .replace(/[*#`>[\]()%_]/g, " ")
+              .replace(/\s+/g, " ")
+              .trim()}
       </Text>
       <View style={styles.cardFooter}>
         <Text style={[type.caption, styles.date]}>

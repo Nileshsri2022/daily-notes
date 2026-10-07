@@ -13,6 +13,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 import { MarkdownView } from "@/components/markdown-view";
+import { HtmlView } from "@/components/html-view";
 import {
   colors,
   maxContentWidth,
@@ -85,7 +86,11 @@ export default function NoteView() {
             </Text>
           </Pressable>
         </View>
-        <MarkdownView markdown={note.body} />
+        {note.format === "html" ? (
+          <HtmlView html={note.body} />
+        ) : (
+          <MarkdownView markdown={note.body} />
+        )}
       </ScrollView>
     </SafeAreaView>
   );

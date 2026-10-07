@@ -31,15 +31,18 @@ export const get = query({
   },
 });
 
+const bodyFormat = v.optional(v.union(v.literal("markdown"), v.literal("html")));
+
 export const create = mutation({
-  args: { title: v.string(), body: v.string() },
-  handler: async (ctx, { title, body }) => {
+  args: { title: v.string(), body: v.string(), format: bodyFormat },
+  handler: async (ctx, { title, body, format }) => {
     const userId = await currentUserId(ctx);
     if (!userId) throw new Error("Not signed in");
     return await ctx.db.insert("notes", {
       clerkUserId: userId,
       title: title.trim() || "Untitled",
       body,
+      format: format ?? "markdown",
       status: "draft",
       updatedAt: Date.now(),
     });
@@ -47,8 +50,8 @@ export const create = mutation({
 });
 
 export const update = mutation({
-  args: { id: v.id("notes"), title: v.string(), body: v.string() },
-  handler: async (ctx, { id, title, body }) => {
+  args: { id: v.id("notes"), title: v.string(), body: v.string(), format: bodyFormat },
+  handler: async (ctx, { id, title, body, format }) => {
     const userId = await currentUserId(ctx);
     if (!userId) throw new Error("Not signed in");
     const note = await ctx.db.get(id);
@@ -56,6 +59,7 @@ export const update = mutation({
     await ctx.db.patch(id, {
       title: title.trim() || "Untitled",
       body,
+      format: format ?? "markdown",
       updatedAt: Date.now(),
     });
   },
