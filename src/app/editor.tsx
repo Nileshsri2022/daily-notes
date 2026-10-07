@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -23,6 +23,7 @@ import {
   spacing,
   type,
 } from "@/constants/theme";
+import { useSpeechToText } from "@/hooks/use-speech-to-text";
 
 export default function Editor() {
   const router = useRouter();
@@ -37,6 +38,21 @@ export default function Editor() {
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const appendSegment = useCallback((segment: string) => {
+    setBody((current) =>
+      current.trim() === ""
+        ? segment
+        : `${current.replace(/\s+$/, "")} ${segment}`
+    );
+  }, []);
+  const {
+    supported: micSupported,
+    listening,
+    partial,
+    toggle,
+    stop,
+  } = useSpeechToText(appendSegment);
+
   useEffect(() => {
     if (existing) {
       setTitle(existing.title);
@@ -46,6 +62,7 @@ export default function Editor() {
 
   const save = async () => {
     if (busy) return;
+    if (listening) stop();
     setBusy(true);
     try {
       if (id) {
@@ -100,6 +117,29 @@ export default function Editor() {
             multiline
             textAlignVertical="top"
           />
+          {micSupported ? (
+            <View style={styles.micRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.micButton,
+                  listening && styles.micButtonActive,
+                  pressed && styles.micPressed,
+                ]}
+                onPress={toggle}
+              >
+                <Text style={styles.micIcon}>🎙</Text>
+              </Pressable>
+              <Text
+                style={[
+                  type.caption,
+                  listening ? styles.listeningText : styles.micHint,
+                ]}
+                numberOfLines={2}
+              >
+                {listening ? `Listening… ${partial}` : "Tap to dictate"}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.footer}>
             <Pressable
               style={[styles.button, busy && styles.buttonDisabled]}
@@ -140,6 +180,31 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingVertical: spacing.xs,
   },
+  micRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  micButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.canvas,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  micButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  micPressed: { backgroundColor: colors.surfaceCard },
+  micIcon: { fontSize: 18 },
+  listeningText: { color: colors.primary, flex: 1 },
+  micHint: { color: colors.mutedSoft, flex: 1 },
   footer: { paddingTop: spacing.sm },
   button: {
     backgroundColor: colors.primary,
