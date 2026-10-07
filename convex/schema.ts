@@ -9,6 +9,7 @@ export default defineSchema({
     format: v.optional(v.union(v.literal("markdown"), v.literal("html"))),
     coverStorageId: v.optional(v.id("_storage")),
     tags: v.optional(v.array(v.string())),
+    pinned: v.optional(v.boolean()),
     status: v.union(v.literal("draft"), v.literal("published")),
     updatedAt: v.number(),
   }).index("by_user", ["clerkUserId", "updatedAt"]),

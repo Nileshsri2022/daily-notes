@@ -31,6 +31,7 @@ export default function NoteView() {
   const note = useQuery(api.notes.get, id ? { id: id as Id<"notes"> } : "skip");
   const removeNote = useMutation(api.notes.remove);
   const setStatus = useMutation(api.notes.setStatus);
+  const setPinned = useMutation(api.notes.setPinned);
 
   const onDelete = async () => {
     if (!id) return;
@@ -44,6 +45,11 @@ export default function NoteView() {
       id: id as Id<"notes">,
       status: note.status === "draft" ? "published" : "draft",
     });
+  };
+
+  const onTogglePin = async () => {
+    if (!id || !note) return;
+    await setPinned({ id: id as Id<"notes">, pinned: !(note.pinned ?? false) });
   };
 
   if (!id || note === null) {
@@ -80,6 +86,11 @@ export default function NoteView() {
             onPress={() => router.push({ pathname: "/editor", params: { id } })}
           >
             <Text style={[type.button, styles.actionText]}>Edit</Text>
+          </Pressable>
+          <Pressable style={styles.action} onPress={onTogglePin}>
+            <Text style={[type.button, styles.actionText]}>
+              {note.pinned ? "Unpin" : "Pin"}
+            </Text>
           </Pressable>
           <Pressable style={styles.action} onPress={onTogglePublish}>
             <Text style={[type.button, styles.actionText]}>

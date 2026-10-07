@@ -30,10 +30,15 @@ export default function Feed() {
   const allTags = notes
     ? [...new Set(notes.flatMap((note) => note.tags ?? []))]
     : [];
-  const visibleNotes =
-    notes && activeTag
-      ? notes.filter((note) => (note.tags ?? []).includes(activeTag))
-      : notes;
+  const visibleNotes = notes
+    ? (activeTag
+        ? notes.filter((note) => (note.tags ?? []).includes(activeTag))
+        : notes
+      ).slice()
+      .sort(
+        (a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false)
+      )
+    : notes;
 
   const renderItem = ({ item }: { item: Doc<"notes"> }) => (
     <Pressable
@@ -62,6 +67,7 @@ export default function Feed() {
         </Text>
         <View style={styles.cardFooter}>
           <Text style={[type.caption, styles.date]}>
+            {item.pinned ? "📌 " : ""}
             {new Date(item.updatedAt).toLocaleString()}
           </Text>
           <Text

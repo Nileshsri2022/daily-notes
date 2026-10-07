@@ -101,6 +101,17 @@ export const setCover = mutation({
   },
 });
 
+export const setPinned = mutation({
+  args: { id: v.id("notes"), pinned: v.boolean() },
+  handler: async (ctx, { id, pinned }) => {
+    const userId = await currentUserId(ctx);
+    if (!userId) throw new Error("Not signed in");
+    const note = await ctx.db.get(id);
+    if (!note || note.clerkUserId !== userId) throw new Error("Note not found");
+    await ctx.db.patch(id, { pinned });
+  },
+});
+
 export const setStatus = mutation({
   args: {
     id: v.id("notes"),
