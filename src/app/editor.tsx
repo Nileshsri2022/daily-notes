@@ -40,6 +40,17 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function parseTags(input: string): string[] {
+  return [
+    ...new Set(
+      input
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean)
+    ),
+  ].slice(0, 8);
+}
+
 export default function Editor() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -100,10 +111,19 @@ function EditorForm({
   const generateUploadUrl = useMutation(api.notes.generateCoverUploadUrl);
   const setCover = useMutation(api.notes.setCover);
 
+  const [dirty, setDirty] = useState(false);
+  const [contentVersion, setContentVersion] = useState(0);
+  const markDirty = useCallback(() => setDirty(true), []);
+  const bumpContent = useCallback(() => setContentVersion((v) => v + 1), []);
+
   const editor = useEditorBridge({
     autofocus: false,
     initialContent: initialHtml,
     bridgeExtensions: TenTapStartKit,
+    onChange: () => {
+      markDirty();
+      bumpContent();
+    },
   });
 
   const [title, setTitle] = useState(initialTitle);
@@ -145,23 +165,41 @@ function EditorForm({
     setCoverPick({ uri: asset.uri, mimeType: asset.mimeType ?? "image/jpeg" });
   };
 
-  const save = async () => {
+  const autosave = useCallback(async () => {
+    if (!noteId) return;
+    try {
+      const body = await editor.getHTML();
+      await updateNote({
+        id: noteId as Id<"notes">,
+        title,
+        body,
+        format: "html",
+        tags: parseTags(tagsInput),
+      });
+      setDirty(false);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [noteId, editor, title, tagsInput, updateNote]);
+
+  useEffect(() => {
+    if (!noteId || !dirty || busy) return;
+    const timer = setTimeout(() => {
+      void autosave();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [noteId, dirty, busy, title, tagsInput, contentVersion, autosave]);
+
+  const saveAndExit = async () => {
     if (busy) return;
     if (listening) stop();
     setBusy(true);
     try {
       const body = await editor.getHTML();
-      const tags = [
-        ...new Set(
-          tagsInput
-            .split(",")
-            .map((t) => t.trim().toLowerCase())
-            .filter(Boolean)
-        ),
-      ].slice(0, 8);
+      const tags = parseTags(tagsInput);
       let savedId: Id<"notes"> | null = noteId ? (noteId as Id<"notes">) : null;
       if (noteId) {
-        await updateNote({ id: noteId as Id<"notes">, title, body, format: "html", tags });
+        await updateNote({ id: savedId as Id<"notes">, title, body, format: "html", tags });
       } else {
         savedId = await createNote({ title, body, format: "html", tags });
       }
@@ -226,7 +264,10 @@ function EditorForm({
             placeholder="Title"
             placeholderTextColor={colors.mutedSoft}
             value={title}
-            onChangeText={setTitle}
+            onChangeText={(text) => {
+              setTitle(text);
+              markDirty();
+            }}
             multiline
           />
           <RichText editor={editor} style={styles.richText} />
@@ -235,7 +276,10 @@ function EditorForm({
             placeholder="Tags (comma separated)"
             placeholderTextColor={colors.mutedSoft}
             value={tagsInput}
-            onChangeText={setTagsInput}
+            onChangeText={(text) => {
+              setTagsInput(text);
+              markDirty();
+            }}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -269,7 +313,7 @@ function EditorForm({
               busy && styles.buttonDisabled,
               pressed && !busy && styles.buttonPressed,
             ]}
-            onPress={save}
+            onPress={saveAndExit}
             disabled={busy}
           >
             <Text style={[type.button, styles.buttonText]}>
