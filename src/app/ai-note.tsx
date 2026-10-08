@@ -45,11 +45,13 @@ export default function AINote() {
   const generateNote = useAction(api.ai.generateNote);
   const listModelsAction = useAction(api.ai.listModels);
   const createNote = useMutation(api.notes.create);
+  const logExpenses = useMutation(api.expenses.logFromNote);
 
   const [step, setStep] = useState<"record" | "preview">("record");
   const [transcript, setTranscript] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [extractedExpenses, setExtractedExpenses] = useState<any[]>([]);
 
   // Model Selection State
   const defaultModel = "openai/gpt-oss-20b";
@@ -126,6 +128,7 @@ export default function AINote() {
       setTitle(result.title);
       setBody(result.body);
       setTagsInput(result.tags.join(", "));
+      setExtractedExpenses(result.expenses || []);
       setStep("preview");
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : String(err);
@@ -147,12 +150,23 @@ export default function AINote() {
         .map((t) => t.trim().toLowerCase())
         .filter(Boolean);
 
-      await createNote({
+      const noteId = await createNote({
         title: title.trim() || "Spoken Reflections",
         body,
         format: "markdown",
         tags,
       });
+
+      if (extractedExpenses.length > 0) {
+        try {
+          await logExpenses({
+            noteId,
+            expenses: extractedExpenses,
+          });
+        } catch (expErr) {
+          console.warn("Could not log expenses:", expErr);
+        }
+      }
 
       router.replace("/");
     } catch (err: unknown) {
@@ -370,6 +384,22 @@ export default function AINote() {
                     <AlertTitle>Save Error</AlertTitle>
                     <AlertDescription>{errorMessage}</AlertDescription>
                   </Alert>
+                ) : null}
+
+                {/* Detected Expenses Banner */}
+                {extractedExpenses.length > 0 ? (
+                  <View style={styles.expensesBanner}>
+                    <Text style={styles.expensesBannerTitle}>
+                      💳 {extractedExpenses.length} Expense{extractedExpenses.length > 1 ? "s" : ""} Detected (Total: $
+                      {extractedExpenses
+                        .reduce((sum, e) => sum + e.amount, 0)
+                        .toFixed(2)}
+                      )
+                    </Text>
+                    <Text style={styles.expensesBannerSub}>
+                      Will be automatically tracked in your Expenses dashboard
+                    </Text>
+                  </View>
                 ) : null}
 
                 {/* Actions */}
@@ -652,6 +682,24 @@ const createStyles = (colors: ThemeColors) =>
         default: "monospace",
       }),
       outlineWidth: 0,
+    },
+    expensesBanner: {
+      backgroundColor: colors.surfaceCard,
+      borderWidth: 1,
+      borderColor: colors.hairline,
+      borderRadius: radius.md,
+      padding: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+    expensesBannerTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.ink,
+      marginBottom: 2,
+    },
+    expensesBannerSub: {
+      fontSize: 12,
+      color: colors.muted,
     },
     previewActions: {
       gap: spacing.xs,

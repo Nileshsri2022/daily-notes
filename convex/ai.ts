@@ -35,23 +35,50 @@ export const generateNote = action({
 
     const url = `${finalBaseUrl.replace(/\/+$/, "")}/chat/completions`;
 
-    const systemPrompt = `You are an empathetic, insightful personal diary and note-taking assistant.
-The user speaks their raw thoughts aloud as a voice memo. Your job is to transform their raw voice transcript into a beautifully written, thoughtfully organized markdown diary note.
+    const systemPrompt = `You are an empathetic, insightful personal diary and note-taking assistant with smart expense tracking capabilities.
+The user speaks their raw thoughts aloud as a voice memo. Your job is to transform their raw voice transcript into a beautifully written, thoughtfully organized markdown diary note, while detecting any financial expenses mentioned.
 
 Formatting Guidelines:
 1. Title: Create a natural, memorable title (3-7 words) summarizing the core thought or event.
 2. Markdown Body:
    - Organize into logical paragraphs with expressive Markdown (e.g. ## Reflections).
    - If any next steps, tasks, or to-dos are mentioned, group them under a "## Action Items" section using markdown checkboxes (e.g. "- [ ] Call doctor", "- [ ] Send report").
+   - If any money spent, purchases, or expenses are mentioned, include a "## Expenses" section summarizing them (e.g. "- 🍔 Lunch: $15.00", "**Total:** $15.00").
    - Remove vocal fillers (um, uh, like, you know) and repair speech-recognition phrasing while strictly preserving the user's authentic perspective and first-person tone.
    - Make the formatting clean, elegant, and enjoyable to re-read.
-3. Tags: 2-4 concise, lowercase topic tags (e.g. ["reflections", "work", "ideas"]).
+3. Tags: 2-4 concise, lowercase topic tags (e.g. ["reflections", "work", "expenses"]).
+4. Expenses Extraction:
+   - Carefully identify any purchases, money paid, bills, or expenditures mentioned in the transcript (e.g. "spent 30 dollars on groceries", "paid 15 for lunch", "45 bucks for gas").
+   - Parse each item into:
+     - "item": clean item description (e.g. "Chipotle Lunch", "Gas station", "Groceries")
+     - "amount": numeric value rounded to 2 decimals (e.g. 15.50, 40)
+     - "category": MUST be one of these exact 8 categories:
+       * "Food & Dining" (groceries, lunch, dinner, coffee, snacks, restaurants)
+       * "Transportation" (fuel/gas, Uber/cab, train, bus, parking, flights)
+       * "Shopping" (clothing, electronics, Amazon, essentials, household items)
+       * "Bills & Subscriptions" (rent, electricity, wifi, Netflix, phone recharge)
+       * "Health & Wellness" (pharmacy, doctor, medicine, gym, dentist)
+       * "Entertainment" (movies, concerts, games, outings, parties)
+       * "Work & Education" (books, courses, software, office supplies)
+       * "General / Other" (miscellaneous or unclassified items)
+     - "currency": currency symbol if mentioned or default to "$"
+   - Compute "totalExpenses": sum of all expense amounts.
+   - If NO expenses were mentioned, return "expenses": [] and "totalExpenses": 0.
 
 Respond ONLY with valid JSON in this exact structure:
 {
   "title": "Title here",
   "body": "Markdown content here",
-  "tags": ["tag1", "tag2"]
+  "tags": ["tag1", "tag2"],
+  "expenses": [
+    {
+      "item": "Item description",
+      "amount": 25.50,
+      "category": "Food & Dining",
+      "currency": "$"
+    }
+  ],
+  "totalExpenses": 25.50
 }`;
 
     const res = await fetch(url, {
@@ -80,7 +107,19 @@ Respond ONLY with valid JSON in this exact structure:
     };
     const content = data.choices?.[0]?.message?.content ?? "";
 
-    let parsed: { title?: string; body?: string; tags?: string[] } = {};
+    let parsed: {
+      title?: string;
+      body?: string;
+      tags?: string[];
+      expenses?: Array<{
+        item?: string;
+        amount?: number;
+        category?: string;
+        currency?: string;
+      }>;
+      totalExpenses?: number;
+    } = {};
+
     try {
       const cleaned = content
         .replace(/^```json\s*/i, "")
@@ -94,13 +133,48 @@ Respond ONLY with valid JSON in this exact structure:
         title: firstLine || "Spoken Reflections",
         body: content,
         tags: ["voice-note", "ai"],
+        expenses: [],
+        totalExpenses: 0,
       };
     }
+
+    const VALID_CATEGORIES = new Set([
+      "Food & Dining",
+      "Transportation",
+      "Shopping",
+      "Bills & Subscriptions",
+      "Health & Wellness",
+      "Entertainment",
+      "Work & Education",
+      "General / Other",
+    ]);
+
+    const sanitizedExpenses = Array.isArray(parsed.expenses)
+      ? parsed.expenses
+          .filter((e) => e && typeof e.amount === "number" && e.amount > 0)
+          .map((e) => {
+            const rawCat = String(e.category || "General / Other");
+            const category = VALID_CATEGORIES.has(rawCat)
+              ? rawCat
+              : "General / Other";
+            return {
+              item: String(e.item || "Expense").trim(),
+              amount: Math.round(Number(e.amount) * 100) / 100,
+              category,
+              currency: String(e.currency || "$"),
+            };
+          })
+      : [];
 
     return {
       title: (parsed.title || "Spoken Reflections").trim(),
       body: (parsed.body || transcript).trim(),
       tags: Array.isArray(parsed.tags) ? parsed.tags : ["ai", "diary"],
+      expenses: sanitizedExpenses,
+      totalExpenses:
+        typeof parsed.totalExpenses === "number"
+          ? Math.round(parsed.totalExpenses * 100) / 100
+          : sanitizedExpenses.reduce((sum, e) => sum + e.amount, 0),
     };
   },
 });

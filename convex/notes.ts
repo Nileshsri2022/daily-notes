@@ -113,6 +113,13 @@ export const remove = mutation({
   handler: async (ctx, { id }) => {
     const note = await requireNote(ctx, id);
     if (note.coverStorageId) await ctx.storage.delete(note.coverStorageId);
+    const linkedExpenses = await ctx.db
+      .query("expenses")
+      .withIndex("by_note", (q) => q.eq("noteId", id))
+      .collect();
+    for (const exp of linkedExpenses) {
+      await ctx.db.delete(exp._id);
+    }
     await ctx.db.delete(id);
   },
 });

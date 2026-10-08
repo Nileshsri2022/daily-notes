@@ -14,4 +14,27 @@ export default defineSchema({
     status: v.union(v.literal("draft"), v.literal("published")),
     updatedAt: v.number(),
   }).index("by_user", ["clerkUserId", "updatedAt"]),
+
+  expenses: defineTable({
+    clerkUserId: v.string(),
+    noteId: v.id("notes"),
+    amount: v.number(),
+    currency: v.string(),
+    item: v.string(),
+    category: v.union(
+      v.literal("Food & Dining"),
+      v.literal("Transportation"),
+      v.literal("Shopping"),
+      v.literal("Bills & Subscriptions"),
+      v.literal("Health & Wellness"),
+      v.literal("Entertainment"),
+      v.literal("Work & Education"),
+      v.literal("General / Other")
+    ),
+    date: v.number(),
+  })
+    .index("by_user", ["clerkUserId"])
+    .index("by_user_date", ["clerkUserId", "date"])
+    .index("by_note", ["noteId"])
+    .index("by_user_category", ["clerkUserId", "category"]),
 });

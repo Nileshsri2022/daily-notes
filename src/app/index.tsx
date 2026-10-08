@@ -11,11 +11,11 @@ import {
   StyleSheet,
   Text,
   View,
-  type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { NoteCover } from "@/components/note-cover";
+import { ExpensesDashboard } from "@/components/expenses-dashboard";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,7 +29,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -51,10 +50,11 @@ function stripMarkup(body: string, format?: string): string {
 export default function Feed() {
   const router = useRouter();
   const notes = useQuery(api.notes.list);
+  const expenseSummary = useQuery(api.expenses.getSummary, {});
   const toggleTaskMutation = useMutation(api.notes.toggleTask);
   const { setOpen: setSidebarOpen } = useSidebar();
 
-  const [mainTab, setMainTab] = useState<"notes" | "tasks">("notes");
+  const [mainTab, setMainTab] = useState<"notes" | "tasks" | "expenses">("notes");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -266,22 +266,6 @@ export default function Feed() {
     >
       {/* Collapsible Sidebar */}
       <Sidebar>
-        <SidebarHeader>
-          <View style={styles.sidebarBrand}>
-            <Text style={styles.sidebarBrandIcon}>📖</Text>
-            <Text style={[type.titleMd, styles.sidebarBrandTitle]}>
-              DiaryNotes
-            </Text>
-          </View>
-          <Pressable
-            style={styles.sidebarCloseBtn}
-            onPress={() => setSidebarOpen(false)}
-            accessibilityLabel="Close sidebar"
-          >
-            <Text style={styles.sidebarCloseText}>✕</Text>
-          </Pressable>
-        </SidebarHeader>
-
         <SidebarContent>
           {/* Navigation Views */}
           <SidebarGroup>
@@ -327,6 +311,30 @@ export default function Feed() {
                   }
                   onPress={() => {
                     setMainTab("tasks");
+                    setSidebarOpen(false);
+                  }}
+                />
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={mainTab === "expenses"}
+                  icon={<Text style={{ fontSize: 16 }}>💳</Text>}
+                  title="Expenses"
+                  badge={
+                    expenseSummary && expenseSummary.totalThisMonth > 0 ? (
+                      <Badge
+                        variant={mainTab === "expenses" ? "default" : "outline"}
+                      >
+                        <BadgeText>
+                          {expenseSummary.currency}
+                          {Math.round(expenseSummary.totalThisMonth)}
+                        </BadgeText>
+                      </Badge>
+                    ) : null
+                  }
+                  onPress={() => {
+                    setMainTab("expenses");
                     setSidebarOpen(false);
                   }}
                 />
@@ -404,7 +412,8 @@ export default function Feed() {
       ) : (
         <View style={styles.container}>
           {/* Centered Controls Container */}
-          <View style={styles.controlsWrap}>
+          {mainTab !== "expenses" ? (
+            <View style={styles.controlsWrap}>
             {/* Search Input */}
             <Input
               placeholder={
@@ -487,6 +496,7 @@ export default function Feed() {
               </View>
             ) : null}
           </View>
+          ) : null}
 
           {/* Tab 1: Notes List */}
           {mainTab === "notes" ? (
@@ -552,6 +562,9 @@ export default function Feed() {
               }
             />
           ) : null}
+
+          {/* Tab 3: Expenses Dashboard */}
+          {mainTab === "expenses" ? <ExpensesDashboard /> : null}
 
           {/* Menu Backdrop */}
           {menuOpen ? (
@@ -686,34 +699,6 @@ const styles = StyleSheet.create({
   },
   actionItemsTitle: {
     color: colors.ink,
-  },
-  sidebarBrand: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  sidebarBrandIcon: {
-    fontSize: 22,
-  },
-  sidebarBrandTitle: {
-    color: colors.ink,
-    fontWeight: "700",
-  },
-  sidebarCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceSoft,
-    ...(Platform.OS === "web"
-      ? ({ cursor: "pointer", userSelect: "none" } as ViewStyle)
-      : {}),
-  },
-  sidebarCloseText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.muted,
   },
   sidebarShortcutHint: {
     fontSize: 12,

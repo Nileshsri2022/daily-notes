@@ -114,10 +114,12 @@ export function SidebarIcon({
 export function SidebarTrigger({
   style,
   className,
+  children,
   ...props
 }: Omit<React.ComponentProps<typeof Pressable>, "style"> & {
   style?: StyleProp<ViewStyle>;
   className?: string;
+  children?: React.ReactNode;
 }) {
   const { toggleSidebar } = useSidebar();
   const [hovered, setHovered] = React.useState(false);
@@ -127,7 +129,7 @@ export function SidebarTrigger({
       accessibilityRole="button"
       accessibilityLabel="Toggle Sidebar (Ctrl+B)"
       // @ts-ignore web-only tooltip attribute
-      title="Toggle Sidebar Ctrl+B"
+      title="Toggle Sidebar (Ctrl+B)"
       onPress={toggleSidebar}
       // @ts-ignore web-only hover events
       onMouseEnter={() => setHovered(true)}
@@ -140,12 +142,12 @@ export function SidebarTrigger({
         style,
       ]}
       className={cn(
-        "h-9 w-9 items-center justify-center rounded-md border border-hairline",
+        "h-9 w-9 items-center justify-center rounded-md",
         className
       )}
       {...props}
     >
-      <SidebarIcon />
+      {children ?? <Text style={styles.triggerEmoji}>📖</Text>}
     </Pressable>
   );
 }
@@ -355,21 +357,27 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
     ...(Platform.OS === "web"
-      ? ({ cursor: "pointer", userSelect: "none" } as ViewStyle)
+      ? ({
+          cursor: "pointer",
+          userSelect: "none",
+          outlineStyle: "none",
+        } as any)
       : {}),
   },
   triggerHovered: {
     backgroundColor: colors.surfaceSoft,
-    borderColor: colors.mutedSoft,
   },
   triggerPressed: {
     transform: [{ scale: 0.95 }],
+    backgroundColor: colors.surfaceSoft,
+  },
+  triggerEmoji: {
+    fontSize: 20,
+    lineHeight: 24,
   },
   backdrop: {
     position: "absolute",

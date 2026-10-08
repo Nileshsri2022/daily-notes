@@ -9,6 +9,7 @@
  */
 
 import type * as ai from "../ai.js";
+import type * as expenses from "../expenses.js";
 import type * as helpers from "../helpers.js";
 import type * as notes from "../notes.js";
 import type * as trash from "../trash.js";
@@ -21,6 +22,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   ai: typeof ai;
+  expenses: typeof expenses;
   helpers: typeof helpers;
   notes: typeof notes;
   trash: typeof trash;
