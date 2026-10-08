@@ -25,15 +25,11 @@ export const generateNote = action({
       process.env.OPENAI_API_KEY ||
       "";
 
-    const finalModel =
-      model ||
-      process.env.AI_MODEL ||
-      process.env.OPENAI_MODEL ||
-      "gpt-4o-mini";
+    const finalModel = model || "openai/gpt-oss-20b";
 
     if (!finalApiKey) {
       throw new Error(
-        "AI API key is missing. Please set AI_API_KEY (or EXPO_PUBLIC_AI_API_KEY) in .env.local"
+        "AI API key is missing. Please set AI_API_KEY in Convex or .env"
       );
     }
 

@@ -52,8 +52,7 @@ export default function AINote() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Model Selection State
-  const defaultModel =
-    process.env.EXPO_PUBLIC_AI_MODEL || "openai/gpt-oss-20b";
+  const defaultModel = "openai/gpt-oss-20b";
   const [selectedModel, setSelectedModel] = useState<string>(defaultModel);
   const [models, setModels] = useState<string[]>([defaultModel]);
   const [loadingModels, setLoadingModels] = useState(false);
