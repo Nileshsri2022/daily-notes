@@ -35,12 +35,44 @@ export default function AINote() {
   const styles = createStyles(colors);
 
   const generateNote = useAction(api.ai.generateNote);
+  const listModelsAction = useAction(api.ai.listModels);
   const createNote = useMutation(api.notes.create);
 
   const [step, setStep] = useState<"record" | "preview">("record");
   const [transcript, setTranscript] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Model Selection State
+  const defaultModel =
+    process.env.EXPO_PUBLIC_AI_MODEL || "openai/gpt-oss-20b";
+  const [selectedModel, setSelectedModel] = useState<string>(defaultModel);
+  const [models, setModels] = useState<string[]>([defaultModel]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
+
+  const loadModels = useCallback(async () => {
+    try {
+      setLoadingModels(true);
+      const fetched = await listModelsAction({
+        apiKey: process.env.EXPO_PUBLIC_AI_API_KEY,
+        baseUrl: process.env.EXPO_PUBLIC_AI_BASE_URL,
+      });
+      if (fetched && fetched.length > 0) {
+        setModels(fetched);
+        // If current model isn't in fetched list, pick the first fetched model
+        setSelectedModel((curr) => (fetched.includes(curr) ? curr : fetched[0]));
+      }
+    } catch (err) {
+      console.warn("Could not fetch models:", err);
+    } finally {
+      setLoadingModels(false);
+    }
+  }, [listModelsAction]);
+
+  useEffect(() => {
+    loadModels();
+  }, [loadModels]);
 
   // Result state for preview
   const [title, setTitle] = useState("");
@@ -81,7 +113,7 @@ export default function AINote() {
         transcript: textToProcess,
         apiKey: process.env.EXPO_PUBLIC_AI_API_KEY,
         baseUrl: process.env.EXPO_PUBLIC_AI_BASE_URL,
-        model: process.env.EXPO_PUBLIC_AI_MODEL,
+        model: selectedModel,
       });
 
       setTitle(result.title);
@@ -150,6 +182,80 @@ export default function AINote() {
                     Speak your mind freely. AI will transform your raw thoughts
                     into an organized Markdown note with title, sections, and tags.
                   </Text>
+                </View>
+
+                {/* Model Selector Card */}
+                <View style={styles.modelSection}>
+                  <View style={styles.modelHeaderRow}>
+                    <Text style={[type.caption, styles.modelSectionLabel]}>
+                      AI MODEL ({models.length} AVAILABLE)
+                    </Text>
+                    <Pressable
+                      onPress={loadModels}
+                      hitSlop={8}
+                      disabled={loadingModels}
+                    >
+                      <Text style={[type.caption, styles.refreshLink]}>
+                        {loadingModels ? "Loading…" : "↻ Refresh"}
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  <Pressable
+                    style={styles.modelTrigger}
+                    onPress={() => setModelPickerOpen((prev) => !prev)}
+                  >
+                    <View style={styles.modelTriggerLeft}>
+                      <Text style={styles.modelSparkle}>⚡</Text>
+                      <Text
+                        style={[type.bodySm, styles.modelTriggerText]}
+                        numberOfLines={1}
+                      >
+                        {selectedModel}
+                      </Text>
+                    </View>
+                    <Text style={styles.modelTriggerCaret}>
+                      {modelPickerOpen ? "▲" : "▼"}
+                    </Text>
+                  </Pressable>
+
+                  {modelPickerOpen ? (
+                    <View style={styles.modelDropdown}>
+                      <ScrollView
+                        style={styles.modelDropdownScroll}
+                        nestedScrollEnabled
+                      >
+                        {models.map((m) => {
+                          const isSelected = m === selectedModel;
+                          return (
+                            <Pressable
+                              key={m}
+                              style={[
+                                styles.modelDropdownItem,
+                                isSelected && styles.modelDropdownItemActive,
+                              ]}
+                              onPress={() => {
+                                setSelectedModel(m);
+                                setModelPickerOpen(false);
+                              }}
+                            >
+                              <Text
+                                style={[
+                                  type.bodySm,
+                                  isSelected
+                                    ? styles.modelDropdownTextActive
+                                    : styles.modelDropdownText,
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {isSelected ? "✓  " : "   "}{m}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  ) : null}
                 </View>
 
                 {/* Microphone Record Hero */}
@@ -376,6 +482,87 @@ const createStyles = (colors: ThemeColors) =>
     },
     recordHeader: {
       marginBottom: spacing.md,
+    },
+    modelSection: {
+      marginBottom: spacing.md,
+    },
+    modelHeaderRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: spacing.xs,
+    },
+    modelSectionLabel: {
+      color: colors.muted,
+      letterSpacing: 0.5,
+    },
+    refreshLink: {
+      color: colors.primary,
+      fontWeight: "600",
+    },
+    modelTrigger: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: colors.surfaceCard,
+      borderWidth: 1,
+      borderColor: colors.hairline,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+    },
+    modelTriggerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+      marginRight: spacing.sm,
+    },
+    modelSparkle: {
+      marginRight: spacing.xs,
+      fontSize: 14,
+    },
+    modelTriggerText: {
+      color: colors.ink,
+      fontWeight: "600",
+    },
+    modelTriggerCaret: {
+      color: colors.muted,
+      fontSize: 12,
+    },
+    modelDropdown: {
+      backgroundColor: colors.surfaceCard,
+      borderWidth: 1,
+      borderColor: colors.hairline,
+      borderRadius: radius.md,
+      marginTop: spacing.xs,
+      maxHeight: 200,
+      overflow: "hidden",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    modelDropdownScroll: {
+      maxHeight: 200,
+    },
+    modelDropdownItem: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.hairline,
+      ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+    },
+    modelDropdownItemActive: {
+      backgroundColor: colors.surfaceSoft,
+    },
+    modelDropdownText: {
+      color: colors.ink,
+    },
+    modelDropdownTextActive: {
+      color: colors.primary,
+      fontWeight: "700",
     },
     micCard: {
       backgroundColor: colors.surfaceCard,
