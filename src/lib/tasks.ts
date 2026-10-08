@@ -62,3 +62,16 @@ export function toggleTaskInBody(
   }`;
   return lines.join("\n");
 }
+
+/**
+ * Counts all pending tasks across an array of notes.
+ */
+export function countPendingTasks(notes?: { body: string; deletedAt?: number }[]): number {
+  if (!notes) return 0;
+  return notes
+    .filter((n) => n.deletedAt === undefined)
+    .reduce((sum, n) => {
+      const tasks = extractTasks(n.body);
+      return sum + tasks.filter((t) => !t.completed).length;
+    }, 0);
+}

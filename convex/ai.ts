@@ -8,7 +8,7 @@ export const generateNote = action({
     apiKey: v.optional(v.string()),
     model: v.optional(v.string()),
   },
-  handler: async (ctx, { transcript, baseUrl, apiKey, model }) => {
+  handler: async (_ctx, { transcript, baseUrl, apiKey, model }) => {
     if (!transcript.trim()) {
       throw new Error("Transcript is empty");
     }
@@ -184,7 +184,7 @@ export const listModels = action({
     baseUrl: v.optional(v.string()),
     apiKey: v.optional(v.string()),
   },
-  handler: async (ctx, { baseUrl, apiKey }) => {
+  handler: async (_ctx, { baseUrl, apiKey }) => {
     const finalBaseUrl =
       baseUrl ||
       process.env.AI_BASE_URL ||

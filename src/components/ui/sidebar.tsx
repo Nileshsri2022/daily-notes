@@ -68,45 +68,6 @@ export function SidebarProvider({
   );
 }
 
-/**
- * Sidebar toggle icon matching the browser/IDE panel toggle representation.
- */
-export function SidebarIcon({
-  size = 18,
-  color = colors.ink,
-}: {
-  size?: number;
-  color?: string;
-}) {
-  const width = size;
-  const height = Math.round(size * 0.88);
-  const railLeft = Math.round(size * 0.32);
-
-  return (
-    <View
-      style={{
-        width,
-        height,
-        borderRadius: 4,
-        borderWidth: 1.6,
-        borderColor: color,
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <View
-        style={{
-          position: "absolute",
-          left: railLeft,
-          top: 0,
-          bottom: 0,
-          width: 1.6,
-          backgroundColor: color,
-        }}
-      />
-    </View>
-  );
-}
 
 /**
  * Sidebar Trigger Button

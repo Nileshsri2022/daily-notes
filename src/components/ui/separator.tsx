@@ -1,4 +1,3 @@
-import * as React from "react";
 import { View, type ViewProps, StyleSheet } from "react-native";
 import { cn } from "@/lib/utils";
 import { colors } from "@/constants/theme";

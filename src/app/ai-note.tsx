@@ -2,7 +2,6 @@ import { useAction, useMutation } from "convex/react";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,

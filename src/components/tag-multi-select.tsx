@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,7 +11,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { colors, radius, spacing, type } from "@/constants/theme";
+import { colors, radius, spacing } from "@/constants/theme";
 
 export interface TagMultiSelectProps {
   allTags: string[];
