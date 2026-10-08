@@ -135,11 +135,7 @@ const styles = StyleSheet.create({
   cardDesc: {
     marginTop: spacing.xxs,
   },
-  loadingMessage: {
-    textAlign: "center",
-    marginTop: spacing.xxl,
-    color: colors.muted,
-  },
+
   emptyMessage: {
     textAlign: "center",
     marginTop: spacing.xxl,

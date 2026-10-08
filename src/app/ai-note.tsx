@@ -20,13 +20,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import {
   colors,
@@ -42,7 +35,6 @@ export default function AINote() {
   const styles = createStyles(colors);
 
   const generateNote = useAction(api.ai.generateNote);
-  const listModelsAction = useAction(api.ai.listModels);
   const createNote = useMutation(api.notes.create);
   const logExpenses = useMutation(api.expenses.logFromNote);
 
@@ -51,36 +43,6 @@ export default function AINote() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [extractedExpenses, setExtractedExpenses] = useState<any[]>([]);
-
-  // Model Selection State
-  const defaultModel = "openai/gpt-oss-20b";
-  const [selectedModel, setSelectedModel] = useState<string>(defaultModel);
-  const [models, setModels] = useState<string[]>([defaultModel]);
-  const [loadingModels, setLoadingModels] = useState(false);
-  const [modelPickerOpen, setModelPickerOpen] = useState(false);
-
-  const loadModels = useCallback(async () => {
-    try {
-      setLoadingModels(true);
-      const fetched = await listModelsAction({
-        apiKey: process.env.EXPO_PUBLIC_AI_API_KEY,
-        baseUrl: process.env.EXPO_PUBLIC_AI_BASE_URL,
-      });
-      if (fetched && fetched.length > 0) {
-        setModels(fetched);
-        // If current model isn't in fetched list, pick the first fetched model
-        setSelectedModel((curr) => (fetched.includes(curr) ? curr : fetched[0]));
-      }
-    } catch (err) {
-      console.warn("Could not fetch models:", err);
-    } finally {
-      setLoadingModels(false);
-    }
-  }, [listModelsAction]);
-
-  useEffect(() => {
-    loadModels();
-  }, [loadModels]);
 
   // Result state for preview
   const [title, setTitle] = useState("");
@@ -121,7 +83,6 @@ export default function AINote() {
         transcript: textToProcess,
         apiKey: process.env.EXPO_PUBLIC_AI_API_KEY,
         baseUrl: process.env.EXPO_PUBLIC_AI_BASE_URL,
-        model: selectedModel,
       });
 
       setTitle(result.title);
@@ -199,45 +160,6 @@ export default function AINote() {
                     Speak your mind freely. AI will transform your raw thoughts
                     into an organized Markdown note with title, sections, and tags.
                   </Text>
-                </View>
-
-                {/* Model Selector Card */}
-                <View style={styles.modelSection}>
-                  <View style={styles.modelHeaderRow}>
-                    <Text style={[type.caption, styles.modelSectionLabel]}>
-                      AI MODEL ({models.length} AVAILABLE)
-                    </Text>
-                    <Pressable
-                      onPress={loadModels}
-                      hitSlop={8}
-                      disabled={loadingModels}
-                    >
-                      <Text style={[type.caption, styles.refreshLink]}>
-                        {loadingModels ? "Loading…" : "↻ Refresh"}
-                      </Text>
-                    </Pressable>
-                  </View>
-
-                  <Select
-                    value={selectedModel}
-                    onValueChange={setSelectedModel}
-                    open={modelPickerOpen}
-                    onOpenChange={setModelPickerOpen}
-                  >
-                    <SelectTrigger>
-                      <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-                        <Text style={{ marginRight: 6 }}>⚡</Text>
-                        <SelectValue placeholder="Select a model" />
-                      </View>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {models.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </View>
 
                 {/* Microphone Record Hero */}
@@ -457,87 +379,6 @@ const createStyles = (colors: ThemeColors) =>
     recordHeader: {
       marginBottom: spacing.md,
     },
-    modelSection: {
-      marginBottom: spacing.md,
-    },
-    modelHeaderRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: spacing.xs,
-    },
-    modelSectionLabel: {
-      color: colors.muted,
-      letterSpacing: 0.5,
-    },
-    refreshLink: {
-      color: colors.primary,
-      fontWeight: "600",
-    },
-    modelTrigger: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      backgroundColor: colors.surfaceCard,
-      borderWidth: 1,
-      borderColor: colors.hairline,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
-    },
-    modelTriggerLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
-      marginRight: spacing.sm,
-    },
-    modelSparkle: {
-      marginRight: spacing.xs,
-      fontSize: 14,
-    },
-    modelTriggerText: {
-      color: colors.ink,
-      fontWeight: "600",
-    },
-    modelTriggerCaret: {
-      color: colors.muted,
-      fontSize: 12,
-    },
-    modelDropdown: {
-      backgroundColor: colors.surfaceCard,
-      borderWidth: 1,
-      borderColor: colors.hairline,
-      borderRadius: radius.md,
-      marginTop: spacing.xs,
-      maxHeight: 200,
-      overflow: "hidden",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-    modelDropdownScroll: {
-      maxHeight: 200,
-    },
-    modelDropdownItem: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.hairline,
-      ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
-    },
-    modelDropdownItemActive: {
-      backgroundColor: colors.surfaceSoft,
-    },
-    modelDropdownText: {
-      color: colors.ink,
-    },
-    modelDropdownTextActive: {
-      color: colors.primary,
-      fontWeight: "700",
-    },
     micCard: {
       backgroundColor: colors.surfaceCard,
       marginBottom: spacing.md,
@@ -613,19 +454,7 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.ink,
       outlineWidth: 0,
     },
-    errorBanner: {
-      backgroundColor: "#FEF2F2",
-      borderWidth: 1,
-      borderColor: "#FCA5A5",
-      borderRadius: radius.md,
-      padding: spacing.sm,
-      marginBottom: spacing.sm,
-    },
-    errorText: {
-      color: colors.error,
-      fontSize: 14,
-      lineHeight: 20,
-    },
+
     previewHeader: {
       marginBottom: spacing.md,
     },
@@ -638,29 +467,7 @@ const createStyles = (colors: ThemeColors) =>
       fontWeight: "600",
       fontSize: 16,
     },
-    tabBar: {
-      flexDirection: "row",
-      gap: spacing.xs,
-      marginBottom: spacing.xs,
-      marginTop: spacing.xs,
-    },
-    tab: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs,
-      borderRadius: radius.sm,
-      backgroundColor: colors.surfaceSoft,
-      ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
-    },
-    tabActive: {
-      backgroundColor: colors.primary,
-    },
-    tabText: {
-      color: colors.muted,
-    },
-    tabTextActive: {
-      color: colors.onPrimary,
-      fontWeight: "600",
-    },
+
     markdownCard: {
       backgroundColor: colors.surfaceCard,
       minHeight: 240,

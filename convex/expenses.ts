@@ -33,15 +33,13 @@ export const expenseItemValidator = v.object({
   currency: v.optional(v.string()),
 });
 
-/** List all active expenses for the signed-in user, filtered by date range or month/year */
+/** List all active expenses for the signed-in user, filtered by date range */
 export const list = query({
   args: {
-    month: v.optional(v.number()), // 0 - 11 (legacy)
-    year: v.optional(v.number()),  // (legacy)
     startDate: v.optional(v.number()), // Unix ms timestamp
     endDate: v.optional(v.number()),   // Unix ms timestamp
   },
-  handler: async (ctx, { month, year, startDate, endDate }) => {
+  handler: async (ctx, { startDate, endDate }) => {
     const userId = await currentUserId(ctx);
     if (!userId) return [];
 
@@ -67,24 +65,9 @@ export const list = query({
 
     const normalizeCurrency = (c?: string) => (!c || c === "$" ? "₹" : c);
 
-    // Range-based filtering (new)
     if (startDate !== undefined && endDate !== undefined) {
       return activeExpenses
         .filter((e) => e.date >= startDate && e.date <= endDate)
-        .map((e) => ({
-          ...e,
-          currency: normalizeCurrency(e.currency),
-          noteTitle: notesMap.get(e.noteId)?.title || "Spoken Reflections",
-        }));
-    }
-
-    // Month/year filtering (legacy fallback)
-    if (month !== undefined && year !== undefined) {
-      return activeExpenses
-        .filter((e) => {
-          const d = new Date(e.date);
-          return d.getMonth() === month && d.getFullYear() === year;
-        })
         .map((e) => ({
           ...e,
           currency: normalizeCurrency(e.currency),
@@ -106,12 +89,10 @@ export const list = query({
 /** Aggregate summary: total spent in range, total all time, and category breakdowns */
 export const getSummary = query({
   args: {
-    month: v.optional(v.number()),
-    year: v.optional(v.number()),
     startDate: v.optional(v.number()), // Unix ms timestamp
     endDate: v.optional(v.number()),   // Unix ms timestamp
   },
-  handler: async (ctx, { month, year, startDate, endDate }) => {
+  handler: async (ctx, { startDate, endDate }) => {
     const userId = await currentUserId(ctx);
     if (!userId) {
       return {
@@ -141,16 +122,11 @@ export const getSummary = query({
       return note && note.deletedAt === undefined;
     });
 
-    // Build date filter function based on provided args
-    const useRange = startDate !== undefined && endDate !== undefined;
-    const now = new Date();
-    const targetMonth = month !== undefined ? month : now.getMonth();
-    const targetYear = year !== undefined ? year : now.getFullYear();
-
     const isInRange = (expDate: number) => {
-      if (useRange) return expDate >= startDate && expDate <= endDate;
-      const d = new Date(expDate);
-      return d.getMonth() === targetMonth && d.getFullYear() === targetYear;
+      if (startDate !== undefined && endDate !== undefined) {
+        return expDate >= startDate && expDate <= endDate;
+      }
+      return true;
     };
 
     let totalInRange = 0;

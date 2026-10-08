@@ -50,7 +50,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "playwright test tests/tasks.spec.ts"
   },
   "private": true
 }
