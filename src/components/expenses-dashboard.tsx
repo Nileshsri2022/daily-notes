@@ -544,15 +544,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.md,
   },
-  rangeSelectorBar: {
-    backgroundColor: colors.surfaceCard,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
+
   rangeInputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -640,23 +632,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.ink,
   },
-  rangeDateSpan: {
-    fontSize: 12,
-    color: colors.muted,
-    fontWeight: "500",
-  },
-  chartCard: {
-    backgroundColor: colors.surfaceCard,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    marginBottom: spacing.lg,
-  },
-  chartCardContent: {
-    alignItems: "center",
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-  },
+
   chartOuterWrap: {
     alignItems: "center",
     justifyContent: "center",
@@ -747,27 +723,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
   },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm,
-  },
-  sectionTitle: {
-    color: colors.ink,
-    fontWeight: "700",
-  },
-  emptyCard: {
-    backgroundColor: colors.surfaceCard,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    paddingVertical: spacing.xl,
-  },
-  emptyCardContent: {
-    alignItems: "center",
-    paddingHorizontal: spacing.lg,
-  },
+
   emptyIcon: {
     fontSize: 40,
     marginBottom: spacing.sm,
