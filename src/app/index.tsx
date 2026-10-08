@@ -23,6 +23,19 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { extractTasks, type TaskItem } from "@/lib/tasks";
 import {
   colors,
@@ -40,6 +53,7 @@ export default function Feed() {
   const router = useRouter();
   const notes = useQuery(api.notes.list);
   const toggleTaskMutation = useMutation(api.notes.toggleTask);
+  const { setOpen: setSidebarOpen } = useSidebar();
 
   const [mainTab, setMainTab] = useState<"notes" | "tasks">("notes");
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -251,6 +265,148 @@ export default function Feed() {
       style={styles.safe}
       edges={["bottom", "left", "right"]}
     >
+      {/* Collapsible Sidebar */}
+      <Sidebar>
+        <SidebarHeader>
+          <View style={styles.sidebarBrand}>
+            <Text style={styles.sidebarBrandIcon}>📖</Text>
+            <Text style={[type.titleMd, styles.sidebarBrandTitle]}>
+              DiaryNotes
+            </Text>
+          </View>
+          <SidebarTrigger />
+        </SidebarHeader>
+
+        <SidebarContent>
+          {/* Quick Create Buttons */}
+          <View style={styles.sidebarActions}>
+            <Button
+              variant="default"
+              size="sm"
+              title="✨ AI Voice Note"
+              onPress={() => {
+                setSidebarOpen(false);
+                router.push("/ai-note");
+              }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              title="✍️ Manual Note"
+              onPress={() => {
+                setSidebarOpen(false);
+                router.push("/editor");
+              }}
+            />
+          </View>
+
+          {/* Navigation Views */}
+          <SidebarGroup>
+            <SidebarGroupLabel>VIEWS</SidebarGroupLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={mainTab === "notes"}
+                  icon={<Text style={{ fontSize: 16 }}>📝</Text>}
+                  title="Notes"
+                  badge={
+                    notes ? (
+                      <Badge
+                        variant={mainTab === "notes" ? "default" : "outline"}
+                      >
+                        <BadgeText>
+                          {
+                            notes.filter((n) => n.deletedAt === undefined)
+                              .length
+                          }
+                        </BadgeText>
+                      </Badge>
+                    ) : null
+                  }
+                  onPress={() => {
+                    setMainTab("notes");
+                    setSidebarOpen(false);
+                  }}
+                />
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={mainTab === "tasks"}
+                  icon={<Text style={{ fontSize: 16 }}>✅</Text>}
+                  title="Action Items"
+                  badge={
+                    totalPendingCount > 0 ? (
+                      <Badge variant="default">
+                        <BadgeText>{totalPendingCount}</BadgeText>
+                      </Badge>
+                    ) : null
+                  }
+                  onPress={() => {
+                    setMainTab("tasks");
+                    setSidebarOpen(false);
+                  }}
+                />
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+
+          {/* Library */}
+          <SidebarGroup>
+            <SidebarGroupLabel>LIBRARY</SidebarGroupLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  icon={<Text style={{ fontSize: 16 }}>🗑️</Text>}
+                  title="Trash"
+                  onPress={() => {
+                    setSidebarOpen(false);
+                    router.push("/trash");
+                  }}
+                />
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+
+          {/* Tags Filtering */}
+          {allTags.length > 0 ? (
+            <SidebarGroup>
+              <SidebarGroupLabel>TAGS</SidebarGroupLabel>
+              <SidebarMenu>
+                {allTags.map((tag) => {
+                  const isTagActive =
+                    activeTag === tag && mainTab === "notes";
+                  return (
+                    <SidebarMenuItem key={tag}>
+                      <SidebarMenuButton
+                        isActive={isTagActive}
+                        icon={
+                          <Text style={{ fontSize: 14, color: colors.muted }}>
+                            #
+                          </Text>
+                        }
+                        title={tag}
+                        onPress={() => {
+                          setMainTab("notes");
+                          setActiveTag(activeTag === tag ? null : tag);
+                          setSidebarOpen(false);
+                        }}
+                      />
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroup>
+          ) : null}
+        </SidebarContent>
+
+        <SidebarFooter>
+          <Text style={styles.sidebarShortcutHint}>
+            Press Ctrl+B to toggle sidebar
+          </Text>
+        </SidebarFooter>
+      </Sidebar>
+
       {notes === undefined ? (
         <View style={styles.controlsWrap}>
           <Skeleton
@@ -308,16 +464,19 @@ export default function Feed() {
               </TabsList>
             </Tabs>
 
-            {/* Search Input */}
-            <Input
-              placeholder={
-                mainTab === "notes" ? "Search notes…" : "Search action items…"
-              }
-              value={query}
-              onChangeText={setQuery}
-              autoCapitalize="none"
-              style={styles.searchInput}
-            />
+            {/* Search Input with Sidebar Trigger */}
+            <View style={styles.searchRow}>
+              <SidebarTrigger style={styles.searchSidebarTrigger} />
+              <Input
+                placeholder={
+                  mainTab === "notes" ? "Search notes…" : "Search action items…"
+                }
+                value={query}
+                onChangeText={setQuery}
+                autoCapitalize="none"
+                style={styles.searchInput}
+              />
+            </View>
 
             {/* Tag Filter (Notes tab only) */}
             {mainTab === "notes" && allTags.length > 0 ? (
@@ -550,7 +709,18 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 12,
   },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  searchSidebarTrigger: {
+    height: 42,
+    width: 42,
+    borderRadius: radius.md,
+  },
   searchInput: {
+    flex: 1,
     backgroundColor: colors.surfaceCard,
     borderWidth: 1,
     borderColor: colors.hairline,
@@ -558,6 +728,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     color: colors.ink,
+  },
+  sidebarBrand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sidebarBrandIcon: {
+    fontSize: 22,
+  },
+  sidebarBrandTitle: {
+    color: colors.ink,
+    fontWeight: "700",
+  },
+  sidebarActions: {
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  sidebarShortcutHint: {
+    fontSize: 12,
+    color: colors.mutedSoft,
+    textAlign: "center",
   },
   chipsScroll: {
     marginTop: spacing.xs,

@@ -14,6 +14,7 @@
   - `Separator` (`@/components/ui/separator`)
   - `Skeleton` (`@/components/ui/skeleton`)
   - `Checkbox` (`@/components/ui/checkbox`)
+  - `Sidebar`, `SidebarTrigger`, `SidebarHeader`, `SidebarContent`, `SidebarFooter`, `SidebarGroup`, `SidebarMenu`, `SidebarMenuItem`, `SidebarMenuButton` (`@/components/ui/sidebar`)
 - When creating any new UI component, place it in `src/components/ui/` following the same compound shadcn pattern.
 
 ## Environment & Secrets

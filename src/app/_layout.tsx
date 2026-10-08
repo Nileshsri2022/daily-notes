@@ -11,7 +11,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { verifyInstallation } from "nativewind";
 import { colors } from "@/constants/theme";
 import "../global.css";
-import { FontProvider } from '@/theme/FontProvider';
+import { FontProvider } from "@/theme/FontProvider";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function RootLayout() {
   const ready =
@@ -61,21 +62,29 @@ function DevProviders() {
     <NoClerkProvider>
       <ConvexProvider client={convex}>
         <FontProvider>
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: colors.canvas },
-              headerTintColor: colors.ink,
-              headerShadowVisible: false,
-              contentStyle: { backgroundColor: colors.canvas },
-              statusBarStyle: "dark",
-            }}
-          >
-            <Stack.Screen name="index" options={{ title: "DiaryNotes" }} />
-            <Stack.Screen name="editor" options={{ title: "Edit note" }} />
-            <Stack.Screen name="ai-note" options={{ title: "AI Voice Note" }} />
-            <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
-            <Stack.Screen name="trash" options={{ title: "Trash" }} />
-          </Stack>
+          <SidebarProvider>
+            <Stack
+              screenOptions={{
+                headerStyle: { backgroundColor: colors.canvas },
+                headerTintColor: colors.ink,
+                headerShadowVisible: false,
+                contentStyle: { backgroundColor: colors.canvas },
+                statusBarStyle: "dark",
+              }}
+            >
+              <Stack.Screen
+                name="index"
+                options={{
+                  title: "DiaryNotes",
+                  headerLeft: () => <SidebarTrigger style={{ marginRight: 12 }} />,
+                }}
+              />
+              <Stack.Screen name="editor" options={{ title: "Edit note" }} />
+              <Stack.Screen name="ai-note" options={{ title: "AI Voice Note" }} />
+              <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
+              <Stack.Screen name="trash" options={{ title: "Trash" }} />
+            </Stack>
+          </SidebarProvider>
         </FontProvider>
       </ConvexProvider>
     </NoClerkProvider>
@@ -88,33 +97,35 @@ function RootNavigator() {
   const router = useRouter();
 
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.canvas },
-        headerTintColor: colors.ink,
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: colors.canvas },
-        statusBarStyle: "dark",
-      }}
-    >
-      <Stack.Protected guard={!!isSignedIn}>
-        <Stack.Screen
-          name="index"
-          options={{
-            title: "DiaryNotes",
-            headerRight: () => (
-              <View style={styles.headerActions}>
-                <Pressable
-                  onPress={() => router.push("/trash")}
-                  style={styles.headerAction}
-                >
-                  <Text style={styles.headerLink}>Trash</Text>
-                </Pressable>
-                <SignOutButton />
-              </View>
-            ),
-          }}
-        />
+    <SidebarProvider>
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.canvas },
+          headerTintColor: colors.ink,
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: colors.canvas },
+          statusBarStyle: "dark",
+        }}
+      >
+        <Stack.Protected guard={!!isSignedIn}>
+          <Stack.Screen
+            name="index"
+            options={{
+              title: "DiaryNotes",
+              headerLeft: () => <SidebarTrigger style={{ marginRight: 12 }} />,
+              headerRight: () => (
+                <View style={styles.headerActions}>
+                  <Pressable
+                    onPress={() => router.push("/trash")}
+                    style={styles.headerAction}
+                  >
+                    <Text style={styles.headerLink}>Trash</Text>
+                  </Pressable>
+                  <SignOutButton />
+                </View>
+              ),
+            }}
+          />
         <Stack.Screen name="editor" options={{ title: "Edit note" }} />
         <Stack.Screen name="ai-note" options={{ title: "AI Voice Note" }} />
         <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
@@ -124,6 +135,7 @@ function RootNavigator() {
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       </Stack.Protected>
     </Stack>
+    </SidebarProvider>
   );
 }
 
