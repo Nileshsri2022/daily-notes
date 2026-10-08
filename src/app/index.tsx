@@ -1,8 +1,8 @@
 import { useRouter } from "expo-router";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
-import type { Doc } from "../../convex/_generated/dataModel";
+import type { Doc, Id } from "../../convex/_generated/dataModel";
 import {
   FlatList,
   Platform,
@@ -16,9 +16,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { NoteCover } from "@/components/note-cover";
 import { Badge, BadgeText } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { extractTasks, type TaskItem } from "@/lib/tasks";
 import {
   colors,
   maxContentWidth,
@@ -34,9 +39,13 @@ function stripMarkup(body: string, format?: string): string {
 export default function Feed() {
   const router = useRouter();
   const notes = useQuery(api.notes.list);
+  const toggleTaskMutation = useMutation(api.notes.toggleTask);
+
+  const [mainTab, setMainTab] = useState<"notes" | "tasks">("notes");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hideCompletedTasks, setHideCompletedTasks] = useState(false);
 
   const allTags = notes
     ? [...new Set(notes.flatMap((note) => note.tags ?? []))]
@@ -63,7 +72,65 @@ export default function Feed() {
         .sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false))
     : notes;
 
-  const renderItem = ({ item }: { item: Doc<"notes"> }) => (
+  // Extract tasks across all active notes
+  const notesWithTasks = (notes ?? [])
+    .filter((note) => note.deletedAt === undefined)
+    .map((note) => {
+      const allTasks = extractTasks(note.body);
+      return {
+        note,
+        tasks: allTasks,
+        totalCount: allTasks.length,
+        completedCount: allTasks.filter((t) => t.completed).length,
+        pendingCount: allTasks.filter((t) => !t.completed).length,
+      };
+    })
+    .filter((item) => item.totalCount > 0);
+
+  const totalPendingCount = notesWithTasks.reduce(
+    (sum, item) => sum + item.pendingCount,
+    0
+  );
+  const totalCompletedCount = notesWithTasks.reduce(
+    (sum, item) => sum + item.completedCount,
+    0
+  );
+
+  const filteredNotesWithTasks = notesWithTasks
+    .map((item) => {
+      const q = query.trim().toLowerCase();
+      const visibleTasks = item.tasks.filter((t) => {
+        if (hideCompletedTasks && t.completed) return false;
+        if (!q) return true;
+        return (
+          t.text.toLowerCase().includes(q) ||
+          item.note.title.toLowerCase().includes(q)
+        );
+      });
+      return {
+        ...item,
+        visibleTasks,
+      };
+    })
+    .filter((item) => item.visibleTasks.length > 0);
+
+  const handleToggleTask = async (
+    noteId: Id<"notes">,
+    lineIndex: number,
+    completed: boolean
+  ) => {
+    try {
+      await toggleTaskMutation({
+        id: noteId,
+        lineIndex,
+        completed,
+      });
+    } catch (err) {
+      console.error("Failed to toggle task:", err);
+    }
+  };
+
+  const renderNoteItem = ({ item }: { item: Doc<"notes"> }) => (
     <Pressable
       style={({ pressed }) => [
         styles.cardPressable,
@@ -120,6 +187,65 @@ export default function Feed() {
     </Pressable>
   );
 
+  const renderTaskGroup = ({
+    item,
+  }: {
+    item: (typeof filteredNotesWithTasks)[number];
+  }) => (
+    <Card style={styles.taskGroupCard}>
+      <CardContent style={styles.taskGroupCardContent}>
+        <Pressable
+          style={styles.taskGroupHeader}
+          onPress={() =>
+            router.push({ pathname: "/note/[id]", params: { id: item.note._id } })
+          }
+        >
+          <View style={styles.taskGroupTitleWrap}>
+            <Text
+              style={[type.displaySm, styles.taskGroupTitle]}
+              numberOfLines={1}
+            >
+              {item.note.title}
+            </Text>
+            <Text style={styles.taskGroupArrow}>↗</Text>
+          </View>
+          <Badge variant={item.pendingCount === 0 ? "default" : "outline"}>
+            <BadgeText>
+              {item.completedCount}/{item.totalCount} done
+            </BadgeText>
+          </Badge>
+        </Pressable>
+
+        <Separator style={{ marginVertical: spacing.xs }} />
+
+        <View style={styles.taskList}>
+          {item.visibleTasks.map((task) => (
+            <Pressable
+              key={task.id}
+              style={styles.taskRow}
+              onPress={() =>
+                handleToggleTask(item.note._id, task.lineIndex, !task.completed)
+              }
+            >
+              <View pointerEvents="none">
+                <Checkbox checked={task.completed} />
+              </View>
+              <Text
+                style={[
+                  type.bodySm,
+                  styles.taskText,
+                  task.completed && styles.taskTextCompleted,
+                ]}
+              >
+                {task.text}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <SafeAreaView
       style={styles.safe}
@@ -127,7 +253,9 @@ export default function Feed() {
     >
       {notes === undefined ? (
         <View style={styles.controlsWrap}>
-          <Skeleton style={{ height: 42, borderRadius: radius.md, marginBottom: spacing.md }} />
+          <Skeleton
+            style={{ height: 42, borderRadius: radius.md, marginBottom: spacing.md }}
+          />
           <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
             <Skeleton style={{ height: 120, borderRadius: radius.lg }} />
             <Skeleton style={{ height: 120, borderRadius: radius.lg }} />
@@ -138,14 +266,61 @@ export default function Feed() {
         <View style={styles.container}>
           {/* Centered Controls Container */}
           <View style={styles.controlsWrap}>
+            {/* Top Segmented Tabs: Notes vs Action Items */}
+            <Tabs
+              value={mainTab}
+              onValueChange={(val) => setMainTab(val as "notes" | "tasks")}
+              style={styles.segmentedTabs}
+            >
+              <TabsList style={styles.segmentedTabsList}>
+                <TabsTrigger value="notes" style={styles.segmentedTabTrigger}>
+                  <Text
+                    style={[
+                      styles.segmentedTabLabel,
+                      mainTab === "notes" && styles.segmentedTabLabelActive,
+                    ]}
+                  >
+                    Notes
+                  </Text>
+                </TabsTrigger>
+                <TabsTrigger value="tasks" style={styles.segmentedTabTrigger}>
+                  <View style={styles.actionTabRow}>
+                    <Text
+                      style={[
+                        styles.segmentedTabLabel,
+                        mainTab === "tasks" && styles.segmentedTabLabelActive,
+                      ]}
+                    >
+                      Action Items
+                    </Text>
+                    {totalPendingCount > 0 ? (
+                      <Badge
+                        variant="default"
+                        style={styles.actionTabBadge}
+                      >
+                        <BadgeText style={styles.actionTabBadgeText}>
+                          {totalPendingCount}
+                        </BadgeText>
+                      </Badge>
+                    ) : null}
+                  </View>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {/* Search Input */}
             <Input
-              placeholder="Search notes…"
+              placeholder={
+                mainTab === "notes" ? "Search notes…" : "Search action items…"
+              }
               value={query}
               onChangeText={setQuery}
               autoCapitalize="none"
               style={styles.searchInput}
             />
-            {allTags.length > 0 ? (
+
+            {/* Tag Filter (Notes tab only) */}
+            {mainTab === "notes" && allTags.length > 0 ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -166,7 +341,9 @@ export default function Feed() {
                       <Text
                         style={[
                           type.caption,
-                          isActive ? styles.chipTextActive : styles.chipTextInactive,
+                          isActive
+                            ? styles.chipTextActive
+                            : styles.chipTextInactive,
                         ]}
                       >
                         #{tag}
@@ -176,24 +353,90 @@ export default function Feed() {
                 })}
               </ScrollView>
             ) : null}
+
+            {/* Action Items Subheader & Hide Completed Toggle (Tasks tab only) */}
+            {mainTab === "tasks" ? (
+              <View style={styles.tasksSubBar}>
+                <Text style={[type.caption, styles.tasksSubStats]}>
+                  {totalPendingCount} pending · {totalCompletedCount} done
+                </Text>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  title={
+                    hideCompletedTasks ? "Show Completed" : "Hide Completed"
+                  }
+                  onPress={() => setHideCompletedTasks(!hideCompletedTasks)}
+                  style={styles.hideCompletedBtn}
+                />
+              </View>
+            ) : null}
           </View>
 
-          {/* Notes List */}
-          <FlatList
-            data={visibleNotes}
-            keyExtractor={(item) => item._id}
-            renderItem={renderItem}
-            contentContainerStyle={styles.list}
-            ListEmptyComponent={
-              <Text style={styles.emptyMessage}>
-                {query.trim()
-                  ? `No notes matching "${query.trim()}".`
-                  : activeTag
-                    ? `No notes tagged #${activeTag}.`
-                    : "No notes yet.\nTap the + button to write your first one."}
-              </Text>
-            }
-          />
+          {/* Tab 1: Notes List */}
+          {mainTab === "notes" ? (
+            <FlatList
+              data={visibleNotes}
+              keyExtractor={(item) => item._id}
+              renderItem={renderNoteItem}
+              contentContainerStyle={styles.list}
+              ListEmptyComponent={
+                <Text style={styles.emptyMessage}>
+                  {query.trim()
+                    ? `No notes matching "${query.trim()}".`
+                    : activeTag
+                      ? `No notes tagged #${activeTag}.`
+                      : "No notes yet.\nTap the + button to write your first one."}
+                </Text>
+              }
+            />
+          ) : null}
+
+          {/* Tab 2: Action Items List */}
+          {mainTab === "tasks" ? (
+            <FlatList
+              data={filteredNotesWithTasks}
+              keyExtractor={(item) => item.note._id}
+              renderItem={renderTaskGroup}
+              contentContainerStyle={styles.list}
+              ListEmptyComponent={
+                <View style={styles.taskEmptyContainer}>
+                  <Text style={styles.taskEmptyIcon}>📋</Text>
+                  <Text style={[type.displaySm, styles.taskEmptyTitle]}>
+                    {query.trim()
+                      ? "No matching tasks found"
+                      : hideCompletedTasks && notesWithTasks.length > 0
+                        ? "All tasks in view completed!"
+                        : "No action items yet"}
+                  </Text>
+                  <Text style={[type.bodySm, styles.taskEmptySubtitle]}>
+                    {query.trim()
+                      ? `No action items matching "${query.trim()}".`
+                      : hideCompletedTasks && notesWithTasks.length > 0
+                        ? "Great job! You've checked off all tasks in these notes."
+                        : "AI voice notes with next steps or any notes containing markdown '- [ ] To-do' checklists will appear here automatically."}
+                  </Text>
+                  {hideCompletedTasks && notesWithTasks.length > 0 ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title="Show Completed Tasks"
+                      style={{ marginTop: spacing.md }}
+                      onPress={() => setHideCompletedTasks(false)}
+                    />
+                  ) : (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      title="Create AI Voice Note"
+                      style={{ marginTop: spacing.md }}
+                      onPress={() => router.push("/ai-note")}
+                    />
+                  )}
+                </View>
+              }
+            />
+          ) : null}
 
           {/* Menu Backdrop */}
           {menuOpen ? (
@@ -263,11 +506,6 @@ const styles = StyleSheet.create({
     flex: 1,
     position: "relative",
   },
-  loadingMessage: {
-    textAlign: "center",
-    marginTop: spacing.xxl,
-    color: colors.muted,
-  },
   controlsWrap: {
     maxWidth: maxContentWidth,
     width: "100%",
@@ -275,6 +513,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
     paddingBottom: spacing.xxs,
+  },
+  segmentedTabs: {
+    marginBottom: spacing.xs,
+  },
+  segmentedTabsList: {
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: radius.md,
+    padding: 3,
+  },
+  segmentedTabTrigger: {
+    paddingVertical: 8,
+  },
+  segmentedTabLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.muted,
+  },
+  segmentedTabLabelActive: {
+    color: colors.ink,
+    fontWeight: "600",
+  },
+  actionTabRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  actionTabBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  actionTabBadgeText: {
+    fontSize: 10,
+    lineHeight: 12,
   },
   searchInput: {
     backgroundColor: colors.surfaceCard,
@@ -316,6 +590,21 @@ const styles = StyleSheet.create({
   },
   chipTextInactive: {
     color: colors.muted,
+  },
+  tasksSubBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.xs,
+    paddingHorizontal: 2,
+  },
+  tasksSubStats: {
+    color: colors.muted,
+    fontWeight: "500",
+  },
+  hideCompletedBtn: {
+    height: 32,
+    paddingHorizontal: 8,
   },
   list: {
     padding: spacing.md,
@@ -363,11 +652,78 @@ const styles = StyleSheet.create({
   cardDate: {
     color: colors.muted,
   },
+  taskGroupCard: {
+    backgroundColor: colors.surfaceCard,
+  },
+  taskGroupCardContent: {
+    padding: spacing.md,
+  },
+  taskGroupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+  },
+  taskGroupTitleWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  taskGroupTitle: {
+    color: colors.ink,
+  },
+  taskGroupArrow: {
+    fontSize: 14,
+    color: colors.muted,
+  },
+  taskList: {
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  taskRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    paddingVertical: 4,
+    ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+  },
+  taskText: {
+    flex: 1,
+    color: colors.ink,
+    lineHeight: 20,
+  },
+  taskTextCompleted: {
+    textDecorationLine: "line-through",
+    color: colors.muted,
+  },
   emptyMessage: {
     textAlign: "center",
     marginTop: spacing.xxl,
     color: colors.muted,
     lineHeight: 24,
+  },
+  taskEmptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.lg,
+  },
+  taskEmptyIcon: {
+    fontSize: 40,
+    marginBottom: spacing.sm,
+  },
+  taskEmptyTitle: {
+    color: colors.ink,
+    textAlign: "center",
+    marginBottom: spacing.xs,
+  },
+  taskEmptySubtitle: {
+    color: colors.muted,
+    textAlign: "center",
+    maxWidth: 340,
+    lineHeight: 20,
   },
   fab: {
     position: "absolute",

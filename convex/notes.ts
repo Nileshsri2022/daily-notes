@@ -116,3 +116,34 @@ export const remove = mutation({
     await ctx.db.delete(id);
   },
 });
+
+export const toggleTask = mutation({
+  args: {
+    id: v.id("notes"),
+    lineIndex: v.number(),
+    completed: v.boolean(),
+  },
+  handler: async (ctx, { id, lineIndex, completed }) => {
+    const note = await requireNote(ctx, id);
+    const lines = note.body.split("\n");
+    if (lineIndex < 0 || lineIndex >= lines.length) return;
+
+    const regex = /^(\s*(?:<p>)?\s*)-\s*\[([ xX])\]\s*(.*?)(?:<\/p>)?$/;
+    const targetLine = lines[lineIndex];
+    const match = targetLine.match(regex);
+    if (!match) return;
+
+    const prefix = match[1];
+    const text = match[3];
+    const hasClosingP = targetLine.endsWith("</p>");
+    lines[lineIndex] = `${prefix}- [${completed ? "x" : " "}] ${text}${
+      hasClosingP ? "</p>" : ""
+    }`;
+
+    await ctx.db.patch(id, {
+      body: lines.join("\n"),
+      updatedAt: Date.now(),
+    });
+  },
+});
+

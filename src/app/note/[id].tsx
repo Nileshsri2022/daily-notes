@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import {
+  Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,8 +19,11 @@ import { HtmlView } from "@/components/html-view";
 import { NoteCover } from "@/components/note-cover";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { extractTasks } from "@/lib/tasks";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +55,23 @@ export default function NoteView() {
   const softDelete = useMutation(api.trash.softDelete);
   const setStatus = useMutation(api.notes.setStatus);
   const setPinned = useMutation(api.notes.setPinned);
+  const toggleTask = useMutation(api.notes.toggleTask);
+
+  const tasks = note ? extractTasks(note.body) : [];
+  const completedTasksCount = tasks.filter((t) => t.completed).length;
+
+  const handleToggleTask = async (lineIndex: number, completed: boolean) => {
+    if (!id) return;
+    try {
+      await toggleTask({
+        id: id as Id<"notes">,
+        lineIndex,
+        completed,
+      });
+    } catch (err) {
+      console.error("Failed to toggle task:", err);
+    }
+  };
 
   const onDelete = () => {
     setDeleteOpen(true);
@@ -168,6 +190,55 @@ export default function NoteView() {
 
         <Separator style={{ marginVertical: spacing.md }} />
 
+        {/* Interactive Action Items Checklist */}
+        {tasks.length > 0 ? (
+          <Card style={styles.tasksCard}>
+            <CardContent style={styles.tasksCardContent}>
+              <View style={styles.tasksHeader}>
+                <Text style={[type.displaySm, styles.tasksTitle]}>
+                  Action Items
+                </Text>
+                <Badge
+                  variant={
+                    completedTasksCount === tasks.length ? "default" : "outline"
+                  }
+                >
+                  <BadgeText>
+                    {completedTasksCount}/{tasks.length} done
+                  </BadgeText>
+                </Badge>
+              </View>
+
+              <Separator style={{ marginVertical: spacing.xs }} />
+
+              <View style={styles.tasksList}>
+                {tasks.map((task) => (
+                  <Pressable
+                    key={task.id}
+                    style={styles.taskRow}
+                    onPress={() =>
+                      handleToggleTask(task.lineIndex, !task.completed)
+                    }
+                  >
+                    <View pointerEvents="none">
+                      <Checkbox checked={task.completed} />
+                    </View>
+                    <Text
+                      style={[
+                        type.bodySm,
+                        styles.taskText,
+                        task.completed && styles.taskTextCompleted,
+                      ]}
+                    >
+                      {task.text}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {/* Note Body */}
         <View style={styles.bodyWrap}>
           {note.format === "html" ? (
@@ -266,5 +337,40 @@ const createStyles = (colors: ThemeColors) =>
     },
     bodyWrap: {
       minHeight: 200,
+    },
+    tasksCard: {
+      backgroundColor: colors.surfaceCard,
+      marginBottom: spacing.md,
+    },
+    tasksCardContent: {
+      padding: spacing.md,
+    },
+    tasksHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    tasksTitle: {
+      color: colors.ink,
+    },
+    tasksList: {
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
+    taskRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: spacing.sm,
+      paddingVertical: 4,
+      ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+    },
+    taskText: {
+      flex: 1,
+      color: colors.ink,
+      lineHeight: 20,
+    },
+    taskTextCompleted: {
+      textDecorationLine: "line-through",
+      color: colors.muted,
     },
   });

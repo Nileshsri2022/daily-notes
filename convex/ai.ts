@@ -41,7 +41,8 @@ The user speaks their raw thoughts aloud as a voice memo. Your job is to transfo
 Formatting Guidelines:
 1. Title: Create a natural, memorable title (3-7 words) summarizing the core thought or event.
 2. Markdown Body:
-   - Organize into logical paragraphs with expressive Markdown (e.g. ## Reflections, ## Action Items, bullet lists).
+   - Organize into logical paragraphs with expressive Markdown (e.g. ## Reflections).
+   - If any next steps, tasks, or to-dos are mentioned, group them under a "## Action Items" section using markdown checkboxes (e.g. "- [ ] Call doctor", "- [ ] Send report").
    - Remove vocal fillers (um, uh, like, you know) and repair speech-recognition phrasing while strictly preserving the user's authentic perspective and first-person tone.
    - Make the formatting clean, elegant, and enjoyable to re-read.
 3. Tags: 2-4 concise, lowercase topic tags (e.g. ["reflections", "work", "ideas"]).

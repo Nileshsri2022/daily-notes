@@ -97,12 +97,15 @@ export default function WebEditor() {
         : existing.body
       : "";
 
+  const initialFormat = id && existing ? existing.format : "markdown";
+
   return (
     <WebEditorForm
       key={id ?? "new"}
       noteId={id}
       initialTitle={id && existing ? existing.title : ""}
       initialBodyText={initialBodyText}
+      initialFormat={initialFormat}
       initialCoverId={existing?.coverStorageId}
       initialTags={existing?.tags ?? []}
     />
@@ -113,12 +116,14 @@ function WebEditorForm({
   noteId,
   initialTitle,
   initialBodyText,
+  initialFormat,
   initialCoverId,
   initialTags,
 }: {
   noteId?: string;
   initialTitle: string;
   initialBodyText: string;
+  initialFormat?: "html" | "markdown";
   initialCoverId?: Id<"_storage">;
   initialTags: string[];
 }) {
@@ -160,10 +165,12 @@ function WebEditorForm({
 
   useEffect(() => () => stop(), [stop]);
 
+  const formatToSave = initialFormat === "html" ? "html" : "markdown";
+
   const autosave = useCallback(async () => {
     if (!noteId) return;
     try {
-      const htmlBody = plainTextToHtml(body);
+      const bodyToSave = formatToSave === "html" ? plainTextToHtml(body) : body;
       const tags = tagsInput
         .split(",")
         .map((t) => t.trim())
@@ -171,15 +178,15 @@ function WebEditorForm({
       await updateNote({
         id: noteId as Id<"notes">,
         title,
-        body: htmlBody,
-        format: "html",
+        body: bodyToSave,
+        format: formatToSave,
         tags,
       });
       setDirty(false);
     } catch (err) {
       console.error("Autosave error:", err);
     }
-  }, [noteId, body, title, tagsInput, updateNote]);
+  }, [noteId, body, title, tagsInput, updateNote, formatToSave]);
 
   useEffect(() => {
     if (!noteId || !dirty || busy) return;
@@ -206,7 +213,7 @@ function WebEditorForm({
     if (listening) stop();
     setBusy(true);
     try {
-      const htmlBody = plainTextToHtml(body);
+      const bodyToSave = formatToSave === "html" ? plainTextToHtml(body) : body;
       const tags = tagsInput
         .split(",")
         .map((t) => t.trim())
@@ -217,15 +224,15 @@ function WebEditorForm({
         await updateNote({
           id: savedId as Id<"notes">,
           title,
-          body: htmlBody,
-          format: "html",
+          body: bodyToSave,
+          format: formatToSave,
           tags,
         });
       } else {
         savedId = await createNote({
           title,
-          body: htmlBody,
-          format: "html",
+          body: bodyToSave,
+          format: formatToSave,
           tags,
         });
       }
