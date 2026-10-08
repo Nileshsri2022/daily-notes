@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -22,7 +23,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Sidebar,
   SidebarContent,
@@ -33,7 +33,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { extractTasks, type TaskItem } from "@/lib/tasks";
@@ -274,32 +273,16 @@ export default function Feed() {
               DiaryNotes
             </Text>
           </View>
-          <SidebarTrigger />
+          <Pressable
+            style={styles.sidebarCloseBtn}
+            onPress={() => setSidebarOpen(false)}
+            accessibilityLabel="Close sidebar"
+          >
+            <Text style={styles.sidebarCloseText}>✕</Text>
+          </Pressable>
         </SidebarHeader>
 
         <SidebarContent>
-          {/* Quick Create Buttons */}
-          <View style={styles.sidebarActions}>
-            <Button
-              variant="default"
-              size="sm"
-              title="✨ AI Voice Note"
-              onPress={() => {
-                setSidebarOpen(false);
-                router.push("/ai-note");
-              }}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              title="✍️ Manual Note"
-              onPress={() => {
-                setSidebarOpen(false);
-                router.push("/editor");
-              }}
-            />
-          </View>
-
           {/* Navigation Views */}
           <SidebarGroup>
             <SidebarGroupLabel>VIEWS</SidebarGroupLabel>
@@ -422,61 +405,16 @@ export default function Feed() {
         <View style={styles.container}>
           {/* Centered Controls Container */}
           <View style={styles.controlsWrap}>
-            {/* Top Segmented Tabs: Notes vs Action Items */}
-            <Tabs
-              value={mainTab}
-              onValueChange={(val) => setMainTab(val as "notes" | "tasks")}
-              style={styles.segmentedTabs}
-            >
-              <TabsList style={styles.segmentedTabsList}>
-                <TabsTrigger value="notes" style={styles.segmentedTabTrigger}>
-                  <Text
-                    style={[
-                      styles.segmentedTabLabel,
-                      mainTab === "notes" && styles.segmentedTabLabelActive,
-                    ]}
-                  >
-                    Notes
-                  </Text>
-                </TabsTrigger>
-                <TabsTrigger value="tasks" style={styles.segmentedTabTrigger}>
-                  <View style={styles.actionTabRow}>
-                    <Text
-                      style={[
-                        styles.segmentedTabLabel,
-                        mainTab === "tasks" && styles.segmentedTabLabelActive,
-                      ]}
-                    >
-                      Action Items
-                    </Text>
-                    {totalPendingCount > 0 ? (
-                      <Badge
-                        variant="default"
-                        style={styles.actionTabBadge}
-                      >
-                        <BadgeText style={styles.actionTabBadgeText}>
-                          {totalPendingCount}
-                        </BadgeText>
-                      </Badge>
-                    ) : null}
-                  </View>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            {/* Search Input with Sidebar Trigger */}
-            <View style={styles.searchRow}>
-              <SidebarTrigger style={styles.searchSidebarTrigger} />
-              <Input
-                placeholder={
-                  mainTab === "notes" ? "Search notes…" : "Search action items…"
-                }
-                value={query}
-                onChangeText={setQuery}
-                autoCapitalize="none"
-                style={styles.searchInput}
-              />
-            </View>
+            {/* Search Input */}
+            <Input
+              placeholder={
+                mainTab === "notes" ? "Search notes…" : "Search action items…"
+              }
+              value={query}
+              onChangeText={setQuery}
+              autoCapitalize="none"
+              style={styles.searchInput}
+            />
 
             {/* Tag Filter (Notes tab only) */}
             {mainTab === "notes" && allTags.length > 0 ? (
@@ -515,19 +453,37 @@ export default function Feed() {
 
             {/* Action Items Subheader & Hide Completed Toggle (Tasks tab only) */}
             {mainTab === "tasks" ? (
-              <View style={styles.tasksSubBar}>
-                <Text style={[type.caption, styles.tasksSubStats]}>
-                  {totalPendingCount} pending · {totalCompletedCount} done
-                </Text>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  title={
-                    hideCompletedTasks ? "Show Completed" : "Hide Completed"
-                  }
-                  onPress={() => setHideCompletedTasks(!hideCompletedTasks)}
-                  style={styles.hideCompletedBtn}
-                />
+              <View style={styles.actionItemsHeaderWrap}>
+                <View style={styles.actionItemsTitleRow}>
+                  <Text style={[type.displaySm, styles.actionItemsTitle]}>
+                    Action Items
+                  </Text>
+                  {totalPendingCount > 0 ? (
+                    <Badge variant="default" style={styles.actionTabBadge}>
+                      <BadgeText style={styles.actionTabBadgeText}>
+                        {totalPendingCount} pending
+                      </BadgeText>
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">
+                      <BadgeText>All done</BadgeText>
+                    </Badge>
+                  )}
+                </View>
+                <View style={styles.tasksSubBar}>
+                  <Text style={[type.caption, styles.tasksSubStats]}>
+                    {totalPendingCount} pending · {totalCompletedCount} done
+                  </Text>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title={
+                      hideCompletedTasks ? "Show Completed" : "Hide Completed"
+                    }
+                    onPress={() => setHideCompletedTasks(!hideCompletedTasks)}
+                    style={styles.hideCompletedBtn}
+                  />
+                </View>
               </View>
             ) : null}
           </View>
@@ -709,24 +665,26 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 12,
   },
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  searchSidebarTrigger: {
-    height: 42,
-    width: 42,
-    borderRadius: radius.md,
-  },
   searchInput: {
-    flex: 1,
     backgroundColor: colors.surfaceCard,
     borderWidth: 1,
     borderColor: colors.hairline,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    color: colors.ink,
+  },
+  actionItemsHeaderWrap: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.xxs,
+  },
+  actionItemsTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.xxs,
+  },
+  actionItemsTitle: {
     color: colors.ink,
   },
   sidebarBrand: {
@@ -741,9 +699,21 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontWeight: "700",
   },
-  sidebarActions: {
-    gap: spacing.xs,
-    marginBottom: spacing.md,
+  sidebarCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surfaceSoft,
+    ...(Platform.OS === "web"
+      ? ({ cursor: "pointer", userSelect: "none" } as ViewStyle)
+      : {}),
+  },
+  sidebarCloseText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.muted,
   },
   sidebarShortcutHint: {
     fontSize: 12,
