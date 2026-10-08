@@ -1,0 +1,528 @@
+import { useAction, useMutation } from "convex/react";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { api } from "../../convex/_generated/api";
+import { MarkdownView } from "@/components/markdown-view";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useSpeechToText } from "@/hooks/use-speech-to-text";
+import {
+  colors,
+  maxContentWidth,
+  radius,
+  spacing,
+  type,
+  type ThemeColors,
+} from "@/constants/theme";
+
+export default function AINote() {
+  const router = useRouter();
+  const styles = createStyles(colors);
+
+  const generateNote = useAction(api.ai.generateNote);
+  const createNote = useMutation(api.notes.create);
+
+  const [step, setStep] = useState<"record" | "preview">("record");
+  const [transcript, setTranscript] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Result state for preview
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
+  const [previewTab, setPreviewTab] = useState<"rendered" | "source">("rendered");
+  const [saving, setSaving] = useState(false);
+
+  const appendSegment = useCallback((segment: string) => {
+    setTranscript((prev) => (prev ? `${prev} ${segment}` : segment));
+  }, []);
+
+  const {
+    supported: micSupported,
+    listening,
+    partial,
+    toggle: toggleMic,
+    stop: stopMic,
+  } = useSpeechToText(appendSegment);
+
+  useEffect(() => () => stopMic(), [stopMic]);
+
+  const fullLiveText = partial ? `${transcript} ${partial}`.trim() : transcript;
+
+  const handleGenerate = async () => {
+    const textToProcess = fullLiveText.trim();
+    if (!textToProcess) {
+      setErrorMessage("Please speak or write something first.");
+      return;
+    }
+
+    if (listening) stopMic();
+    setLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const result = await generateNote({
+        transcript: textToProcess,
+        apiKey: process.env.EXPO_PUBLIC_AI_API_KEY,
+        baseUrl: process.env.EXPO_PUBLIC_AI_BASE_URL,
+        model: process.env.EXPO_PUBLIC_AI_MODEL,
+      });
+
+      setTitle(result.title);
+      setBody(result.body);
+      setTagsInput(result.tags.join(", "));
+      setStep("preview");
+    } catch (err: unknown) {
+      const raw = err instanceof Error ? err.message : String(err);
+      // Clean up Convex server error wrappers or stack traces if present
+      const match = raw.match(/Uncaught Error:\s*([^\n\r]+)/);
+      const cleanMsg = match ? match[1].trim() : raw.replace(/^\[CONVEX[^\]]*\]\s*/, "").split("\n")[0].trim();
+      setErrorMessage(cleanMsg);
+      if (Platform.OS !== "web") {
+        Alert.alert("AI Error", cleanMsg);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveNote = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const tags = tagsInput
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean);
+
+      await createNote({
+        title: title.trim() || "Spoken Reflections",
+        body,
+        format: "markdown",
+        tags,
+      });
+
+      router.replace("/");
+    } catch (err: unknown) {
+      console.error("Save note error:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMessage(`Failed to save note: ${msg}`);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          style={styles.flex}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.container}>
+            {step === "record" ? (
+              <>
+                {/* Header Instruction */}
+                <View style={styles.recordHeader}>
+                  <Text style={[type.displaySm, styles.heading]}>
+                    AI Voice Journal
+                  </Text>
+                  <Text style={[type.bodySm, styles.subheading]}>
+                    Speak your mind freely. AI will transform your raw thoughts
+                    into an organized Markdown note with title, sections, and tags.
+                  </Text>
+                </View>
+
+                {/* Microphone Record Hero */}
+                <Card style={styles.micCard}>
+                  <CardContent style={styles.micCardContent}>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.micButton,
+                        listening && styles.micButtonActive,
+                        pressed && styles.micButtonPressed,
+                      ]}
+                      onPress={toggleMic}
+                      accessibilityLabel={
+                        listening ? "Stop recording" : "Start recording"
+                      }
+                    >
+                      <Text style={styles.micIcon}>🎙</Text>
+                    </Pressable>
+
+                    <Text style={[type.titleSm, styles.micStatus]}>
+                      {listening
+                        ? "Listening… speak naturally"
+                        : "Tap microphone to record"}
+                    </Text>
+
+                    {!micSupported ? (
+                      <Text style={[type.caption, styles.micUnsupported]}>
+                        (Microphone not supported on this browser/environment.
+                        You can also type or paste thoughts below.)
+                      </Text>
+                    ) : null}
+                  </CardContent>
+                </Card>
+
+                {/* Live Transcript / Thought Box */}
+                <View style={styles.transcriptWrap}>
+                  <View style={styles.transcriptLabelRow}>
+                    <Text style={[type.caption, styles.transcriptLabel]}>
+                      YOUR THOUGHTS / TRANSCRIPT
+                    </Text>
+                    {transcript ? (
+                      <Pressable onPress={() => setTranscript("")}>
+                        <Text style={[type.caption, styles.clearText]}>Clear</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+
+                  <TextInput
+                    style={[type.body, styles.transcriptInput]}
+                    placeholder="Your spoken words will appear here, or type your raw stream of consciousness…"
+                    placeholderTextColor={colors.mutedSoft}
+                    value={fullLiveText}
+                    onChangeText={setTranscript}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                {/* Error Banner if any */}
+                {errorMessage ? (
+                  <View style={styles.errorBanner}>
+                    <Text style={styles.errorText}>{errorMessage}</Text>
+                  </View>
+                ) : null}
+
+                {/* Actions */}
+                <Button
+                  className="mt-4"
+                  size="lg"
+                  onPress={handleGenerate}
+                  disabled={loading || !fullLiveText.trim()}
+                  title={loading ? "Structuring with AI…" : "Transform with AI ✨"}
+                  loading={loading}
+                />
+              </>
+            ) : (
+              <>
+                {/* Preview View */}
+                <View style={styles.previewHeader}>
+                  <Text style={[type.displaySm, styles.heading]}>
+                    Review & Save
+                  </Text>
+                  <Text style={[type.bodySm, styles.subheading]}>
+                    AI organized your thoughts into clean Markdown. You can tweak
+                    anything before saving.
+                  </Text>
+                </View>
+
+                {/* Title Input */}
+                <Text style={[type.caption, styles.inputLabel]}>NOTE TITLE</Text>
+                <Input
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="Note Title"
+                  className="mb-3"
+                  style={styles.titleInput}
+                />
+
+                {/* Tags Input */}
+                <Text style={[type.caption, styles.inputLabel]}>TAGS</Text>
+                <Input
+                  value={tagsInput}
+                  onChangeText={setTagsInput}
+                  placeholder="Tags (comma separated)"
+                  autoCapitalize="none"
+                  className="mb-3"
+                />
+
+                {/* Body Content with Tabs: Rendered vs Source */}
+                <View style={styles.tabBar}>
+                  <Pressable
+                    style={[
+                      styles.tab,
+                      previewTab === "rendered" && styles.tabActive,
+                    ]}
+                    onPress={() => setPreviewTab("rendered")}
+                  >
+                    <Text
+                      style={[
+                        type.caption,
+                        previewTab === "rendered"
+                          ? styles.tabTextActive
+                          : styles.tabText,
+                      ]}
+                    >
+                      Formatted Preview
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.tab,
+                      previewTab === "source" && styles.tabActive,
+                    ]}
+                    onPress={() => setPreviewTab("source")}
+                  >
+                    <Text
+                      style={[
+                        type.caption,
+                        previewTab === "source"
+                          ? styles.tabTextActive
+                          : styles.tabText,
+                      ]}
+                    >
+                      Edit Markdown Source
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {previewTab === "rendered" ? (
+                  <Card style={styles.markdownCard}>
+                    <CardContent>
+                      <MarkdownView markdown={body} />
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <TextInput
+                    style={[type.body, styles.sourceInput]}
+                    value={body}
+                    onChangeText={setBody}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                )}
+
+                {/* Error Banner if any */}
+                {errorMessage ? (
+                  <View style={styles.errorBanner}>
+                    <Text style={styles.errorText}>{errorMessage}</Text>
+                  </View>
+                ) : null}
+
+                {/* Actions */}
+                <View style={styles.previewActions}>
+                  <Button
+                    size="lg"
+                    title={saving ? "Saving…" : "Save to Diary"}
+                    onPress={handleSaveNote}
+                    disabled={saving}
+                    loading={saving}
+                  />
+                  <Button
+                    variant="outline"
+                    title="Start Over"
+                    onPress={() => {
+                      setStep("record");
+                      setErrorMessage(null);
+                    }}
+                  />
+                </View>
+              </>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: colors.canvas,
+    },
+    flex: { flex: 1 },
+    scrollContent: {
+      flexGrow: 1,
+      paddingVertical: spacing.md,
+    },
+    container: {
+      flex: 1,
+      maxWidth: maxContentWidth,
+      width: "100%",
+      alignSelf: "center",
+      paddingHorizontal: spacing.md,
+    },
+    heading: {
+      color: colors.ink,
+      marginBottom: spacing.xxs,
+    },
+    subheading: {
+      color: colors.muted,
+      lineHeight: 20,
+    },
+    recordHeader: {
+      marginBottom: spacing.md,
+    },
+    micCard: {
+      backgroundColor: colors.surfaceCard,
+      marginBottom: spacing.md,
+    },
+    micCardContent: {
+      alignItems: "center",
+      paddingVertical: spacing.xl,
+    },
+    micButton: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
+      backgroundColor: colors.canvas,
+      borderWidth: 2,
+      borderColor: colors.hairline,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: spacing.sm,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      elevation: 2,
+      ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+    },
+    micButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+      transform: [{ scale: 1.05 }],
+      shadowColor: colors.primary,
+      shadowOpacity: 0.4,
+      shadowRadius: 12,
+    },
+    micButtonPressed: {
+      opacity: 0.9,
+    },
+    micIcon: {
+      fontSize: 32,
+    },
+    micStatus: {
+      color: colors.ink,
+      marginTop: spacing.xxs,
+    },
+    micUnsupported: {
+      color: colors.mutedSoft,
+      textAlign: "center",
+      marginTop: spacing.xs,
+      paddingHorizontal: spacing.md,
+    },
+    transcriptWrap: {
+      marginBottom: spacing.sm,
+    },
+    transcriptLabelRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: spacing.xs,
+    },
+    transcriptLabel: {
+      color: colors.muted,
+      letterSpacing: 0.5,
+    },
+    clearText: {
+      color: colors.error,
+    },
+    transcriptInput: {
+      minHeight: 180,
+      backgroundColor: colors.surfaceCard,
+      borderWidth: 1,
+      borderColor: colors.hairline,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      color: colors.ink,
+      outlineWidth: 0,
+    },
+    errorBanner: {
+      backgroundColor: "#FEF2F2",
+      borderWidth: 1,
+      borderColor: "#FCA5A5",
+      borderRadius: radius.md,
+      padding: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+    errorText: {
+      color: colors.error,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    previewHeader: {
+      marginBottom: spacing.md,
+    },
+    inputLabel: {
+      color: colors.muted,
+      marginBottom: spacing.xxs,
+      letterSpacing: 0.5,
+    },
+    titleInput: {
+      fontWeight: "600",
+      fontSize: 16,
+    },
+    tabBar: {
+      flexDirection: "row",
+      gap: spacing.xs,
+      marginBottom: spacing.xs,
+      marginTop: spacing.xs,
+    },
+    tab: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.sm,
+      backgroundColor: colors.surfaceSoft,
+      ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+    },
+    tabActive: {
+      backgroundColor: colors.primary,
+    },
+    tabText: {
+      color: colors.muted,
+    },
+    tabTextActive: {
+      color: colors.onPrimary,
+      fontWeight: "600",
+    },
+    markdownCard: {
+      backgroundColor: colors.surfaceCard,
+      minHeight: 240,
+      marginBottom: spacing.md,
+    },
+    sourceInput: {
+      minHeight: 240,
+      backgroundColor: colors.surfaceCard,
+      borderWidth: 1,
+      borderColor: colors.hairline,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      color: colors.ink,
+      marginBottom: spacing.md,
+      fontFamily: Platform.select({
+        ios: "Menlo",
+        android: "monospace",
+        default: "monospace",
+      }),
+      outlineWidth: 0,
+    },
+    previewActions: {
+      gap: spacing.xs,
+      paddingBottom: spacing.xl,
+    },
+  });

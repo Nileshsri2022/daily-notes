@@ -35,6 +35,7 @@ export default function Feed() {
   const notes = useQuery(api.notes.list);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const allTags = notes
     ? [...new Set(notes.flatMap((note) => note.tags ?? []))]
@@ -186,16 +187,58 @@ export default function Feed() {
             }
           />
 
+          {/* Menu Backdrop */}
+          {menuOpen ? (
+            <Pressable
+              style={styles.backdrop}
+              onPress={() => setMenuOpen(false)}
+            />
+          ) : null}
+
+          {/* Floating Action Menu Options */}
+          {menuOpen ? (
+            <View style={styles.fabMenu}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.fabMenuItem,
+                  pressed && styles.fabMenuItemPressed,
+                ]}
+                onPress={() => {
+                  setMenuOpen(false);
+                  router.push("/ai-note");
+                }}
+              >
+                <Text style={styles.fabMenuIcon}>✨</Text>
+                <Text style={styles.fabMenuText}>AI Voice Note</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.fabMenuItem,
+                  pressed && styles.fabMenuItemPressed,
+                ]}
+                onPress={() => {
+                  setMenuOpen(false);
+                  router.push("/editor");
+                }}
+              >
+                <Text style={styles.fabMenuIcon}>✍️</Text>
+                <Text style={styles.fabMenuText}>Manual Note</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           {/* Floating Action Button */}
           <Pressable
             style={({ pressed }) => [
               styles.fab,
+              menuOpen && styles.fabActive,
               pressed && styles.fabPressed,
             ]}
-            onPress={() => router.push("/editor")}
-            accessibilityLabel="Create note"
+            onPress={() => setMenuOpen(!menuOpen)}
+            accessibilityLabel={menuOpen ? "Close menu" : "Create note"}
           >
-            <Text style={styles.fabIcon}>+</Text>
+            <Text style={styles.fabIcon}>{menuOpen ? "✕" : "+"}</Text>
           </Pressable>
         </View>
       )}
@@ -333,8 +376,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 6,
-    zIndex: 20,
+    zIndex: 30,
     ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+  },
+  fabActive: {
+    backgroundColor: colors.ink,
   },
   fabPressed: {
     backgroundColor: colors.primaryActive,
@@ -342,9 +388,55 @@ const styles = StyleSheet.create({
   },
   fabIcon: {
     color: colors.onPrimary,
-    fontSize: 30,
-    lineHeight: 32,
+    fontSize: 28,
+    lineHeight: 30,
     fontWeight: "400",
     marginTop: -2,
+  },
+  backdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(24, 24, 27, 0.25)",
+    zIndex: 20,
+  },
+  fabMenu: {
+    position: "absolute",
+    bottom: 92,
+    right: 24,
+    gap: spacing.xs,
+    alignItems: "flex-end",
+    zIndex: 25,
+  },
+  fabMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surfaceCard,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+    gap: spacing.xs,
+    ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+  },
+  fabMenuItemPressed: {
+    backgroundColor: colors.surfaceSoft,
+    transform: [{ scale: 0.98 }],
+  },
+  fabMenuIcon: {
+    fontSize: 16,
+  },
+  fabMenuText: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

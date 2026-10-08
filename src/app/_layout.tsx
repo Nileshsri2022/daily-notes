@@ -72,6 +72,7 @@ function DevProviders() {
           >
             <Stack.Screen name="index" options={{ title: "DiaryNotes" }} />
             <Stack.Screen name="editor" options={{ title: "Edit note" }} />
+            <Stack.Screen name="ai-note" options={{ title: "AI Voice Note" }} />
             <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
             <Stack.Screen name="trash" options={{ title: "Trash" }} />
           </Stack>
@@ -115,6 +116,7 @@ function RootNavigator() {
           }}
         />
         <Stack.Screen name="editor" options={{ title: "Edit note" }} />
+        <Stack.Screen name="ai-note" options={{ title: "AI Voice Note" }} />
         <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
         <Stack.Screen name="trash" options={{ title: "Trash" }} />
       </Stack.Protected>
