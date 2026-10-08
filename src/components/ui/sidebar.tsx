@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { colors, radius, spacing } from "@/constants/theme";
+import { colors, radius, spacing, type } from "@/constants/theme";
 import { cn } from "@/lib/utils";
 
 interface SidebarContextValue {
@@ -222,6 +222,19 @@ export function Sidebar({
         ]}
       >
         <SafeAreaView style={styles.safeArea} edges={["top", "bottom", "left"]}>
+          <View style={styles.sidebarHeader}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ fontSize: 18 }}>📖</Text>
+              <Text style={[type.titleSm, styles.drawerTitle]}>Dincharya</Text>
+            </View>
+            <Pressable
+              onPress={() => setOpen(false)}
+              style={styles.drawerCloseBtn}
+              accessibilityLabel="Close drawer"
+            >
+              <Text style={styles.drawerCloseText}>✕</Text>
+            </Pressable>
+          </View>
           {children}
         </SafeAreaView>
       </Animated.View>
@@ -380,29 +393,29 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   backdrop: {
-    position: "absolute",
+    position: (Platform.OS === "web" ? "fixed" : "absolute") as any,
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(24, 24, 27, 0.35)",
-    zIndex: 100,
+    backgroundColor: "rgba(24, 24, 27, 0.45)",
+    zIndex: 9998,
   },
   sidebar: {
-    position: "absolute",
+    position: (Platform.OS === "web" ? "fixed" : "absolute") as any,
     top: 0,
     bottom: 0,
     left: 0,
     width: 290,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.surfaceCard,
     borderRightWidth: 1,
     borderRightColor: colors.hairline,
-    zIndex: 101,
+    zIndex: 9999,
     shadowColor: "#000",
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 16,
+    shadowOffset: { width: 6, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 20,
   },
   safeArea: {
     flex: 1,
@@ -412,9 +425,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.hairlineSoft,
+  },
+  drawerTitle: {
+    color: colors.ink,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  drawerCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    ...(Platform.OS === "web" ? ({ cursor: "pointer" } as any) : {}),
+  },
+  drawerCloseText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.muted,
   },
   sidebarContent: {
     paddingHorizontal: spacing.sm,

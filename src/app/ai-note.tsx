@@ -390,7 +390,7 @@ export default function AINote() {
                 {extractedExpenses.length > 0 ? (
                   <View style={styles.expensesBanner}>
                     <Text style={styles.expensesBannerTitle}>
-                      💳 {extractedExpenses.length} Expense{extractedExpenses.length > 1 ? "s" : ""} Detected (Total: $
+                      💳 {extractedExpenses.length} Expense{extractedExpenses.length > 1 ? "s" : ""} Detected (Total: ₹
                       {extractedExpenses
                         .reduce((sum, e) => sum + e.amount, 0)
                         .toFixed(2)}

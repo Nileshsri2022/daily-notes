@@ -65,7 +65,12 @@ function DevProviders() {
           <SidebarProvider>
             <Stack
               screenOptions={{
-                headerStyle: { backgroundColor: colors.canvas },
+                headerStyle: {
+                  backgroundColor: colors.canvas,
+                  // @ts-ignore border for web
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.hairline,
+                },
                 headerTintColor: colors.ink,
                 headerShadowVisible: false,
                 contentStyle: { backgroundColor: colors.canvas },
@@ -75,7 +80,7 @@ function DevProviders() {
               <Stack.Screen
                 name="index"
                 options={{
-                  title: "DiaryNotes",
+                  title: "Dincharya",
                   headerLeft: () => <SidebarTrigger style={{ marginRight: 12 }} />,
                 }}
               />
@@ -100,7 +105,12 @@ function RootNavigator() {
     <SidebarProvider>
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: colors.canvas },
+          headerStyle: {
+            backgroundColor: colors.canvas,
+            // @ts-ignore border for web
+            borderBottomWidth: 1,
+            borderBottomColor: colors.hairline,
+          },
           headerTintColor: colors.ink,
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.canvas },
@@ -111,7 +121,7 @@ function RootNavigator() {
           <Stack.Screen
             name="index"
             options={{
-              title: "DiaryNotes",
+              title: "Dincharya",
               headerLeft: () => <SidebarTrigger style={{ marginRight: 12 }} />,
               headerRight: () => (
                 <View style={styles.headerActions}>

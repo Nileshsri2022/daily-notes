@@ -43,12 +43,12 @@ Formatting Guidelines:
 2. Markdown Body:
    - Organize into logical paragraphs with expressive Markdown (e.g. ## Reflections).
    - If any next steps, tasks, or to-dos are mentioned, group them under a "## Action Items" section using markdown checkboxes (e.g. "- [ ] Call doctor", "- [ ] Send report").
-   - If any money spent, purchases, or expenses are mentioned, include a "## Expenses" section summarizing them (e.g. "- 🍔 Lunch: $15.00", "**Total:** $15.00").
+   - If any money spent, purchases, or expenses are mentioned, include a "## Expenses" section summarizing them (e.g. "- 🍔 Lunch: ₹150.00", "**Total:** ₹150.00").
    - Remove vocal fillers (um, uh, like, you know) and repair speech-recognition phrasing while strictly preserving the user's authentic perspective and first-person tone.
    - Make the formatting clean, elegant, and enjoyable to re-read.
 3. Tags: 2-4 concise, lowercase topic tags (e.g. ["reflections", "work", "expenses"]).
 4. Expenses Extraction:
-   - Carefully identify any purchases, money paid, bills, or expenditures mentioned in the transcript (e.g. "spent 30 dollars on groceries", "paid 15 for lunch", "45 bucks for gas").
+   - Carefully identify any purchases, money paid, bills, or expenditures mentioned in the transcript (e.g. "spent 300 rupees on groceries", "paid 150 for lunch", "450 on fuel").
    - Parse each item into:
      - "item": clean item description (e.g. "Chipotle Lunch", "Gas station", "Groceries")
      - "amount": numeric value rounded to 2 decimals (e.g. 15.50, 40)
@@ -61,7 +61,7 @@ Formatting Guidelines:
        * "Entertainment" (movies, concerts, games, outings, parties)
        * "Work & Education" (books, courses, software, office supplies)
        * "General / Other" (miscellaneous or unclassified items)
-     - "currency": currency symbol if mentioned or default to "$"
+     - "currency": currency symbol if explicitly mentioned (e.g. "$", "€") or default to "₹" for Indian Rupees
    - Compute "totalExpenses": sum of all expense amounts.
    - If NO expenses were mentioned, return "expenses": [] and "totalExpenses": 0.
 
@@ -73,12 +73,12 @@ Respond ONLY with valid JSON in this exact structure:
   "expenses": [
     {
       "item": "Item description",
-      "amount": 25.50,
+      "amount": 250.00,
       "category": "Food & Dining",
-      "currency": "$"
+      "currency": "₹"
     }
   ],
-  "totalExpenses": 25.50
+  "totalExpenses": 250.00
 }`;
 
     const res = await fetch(url, {

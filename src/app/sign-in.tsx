@@ -165,7 +165,7 @@ export default function SignInScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={styles.container}>
-          <Text style={[type.displayLg, styles.title]}>DiaryNotes</Text>
+          <Text style={[type.displayLg, styles.title]}>Dincharya</Text>
           <Text style={[type.bodySm, styles.subtitle]}>
             {pendingVerification
               ? `Enter the code we sent to ${email.trim()}`

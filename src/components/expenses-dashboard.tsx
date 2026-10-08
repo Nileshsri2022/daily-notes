@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -6,17 +6,25 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
 import { PieChart } from "react-native-gifted-charts";
 import { api } from "../../convex/_generated/api";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { colors, radius, spacing, type } from "@/constants/theme";
+import { colors, maxContentWidth, radius, spacing, type } from "@/constants/theme";
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Food & Dining": "#10B981", // Emerald
@@ -40,66 +48,55 @@ const CATEGORY_ICONS: Record<string, string> = {
   "General / Other": "📦",
 };
 
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
 export function ExpensesDashboard() {
   const router = useRouter();
-  const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [rangeValue, setRangeValue] = useState(30);
+  const [rangeUnit, setRangeUnit] = useState<"days" | "months" | "years">("days");
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
 
-  const summary = useQuery(api.expenses.getSummary, {
-    month: selectedMonth,
-    year: selectedYear,
-  });
+  // Calculate rolling date range (memoized to prevent re-query loops)
+  const { startDate, endDate } = useMemo(() => {
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
 
-  const rawExpenses = useQuery(api.expenses.list, {
-    month: selectedMonth,
-    year: selectedYear,
-  });
-
-  const handlePrevMonth = () => {
-    if (selectedMonth === 0) {
-      setSelectedMonth(11);
-      setSelectedYear((prev) => prev - 1);
+    if (rangeUnit === "days") {
+      start.setDate(start.getDate() - (rangeValue - 1));
+    } else if (rangeUnit === "months") {
+      start.setMonth(start.getMonth() - rangeValue);
     } else {
-      setSelectedMonth((prev) => prev - 1);
+      start.setFullYear(start.getFullYear() - rangeValue);
     }
-    setActiveCategoryFilter(null);
+    return {
+      startDate: start.getTime(),
+      endDate: end.getTime(),
+    };
+  }, [rangeValue, rangeUnit]);
+
+  const summary = useQuery(api.expenses.getSummary, { startDate, endDate });
+  const rawExpenses = useQuery(api.expenses.list, { startDate, endDate });
+
+  const scrollRef = useRef<ScrollView>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const handleScroll = (e: any) => {
+    const y = e.nativeEvent.contentOffset.y;
+    setShowScrollTop(y > 120);
   };
 
-  const handleNextMonth = () => {
-    if (selectedMonth === 11) {
-      setSelectedMonth(0);
-      setSelectedYear((prev) => prev + 1);
-    } else {
-      setSelectedMonth((prev) => prev + 1);
-    }
-    setActiveCategoryFilter(null);
+  const handleScrollToTop = () => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  const isCurrentMonth =
-    selectedMonth === now.getMonth() && selectedYear === now.getFullYear();
-
-  const handleResetToCurrent = () => {
-    setSelectedMonth(now.getMonth());
-    setSelectedYear(now.getFullYear());
-    setActiveCategoryFilter(null);
-  };
+  // Format the date range label
+  const rangeLabel = useMemo(() => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const fmt = (d: Date) =>
+      d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    return `${fmt(start)} – ${fmt(end)}`;
+  }, [startDate, endDate]);
 
   if (summary === undefined || rawExpenses === undefined) {
     return (
@@ -132,265 +129,522 @@ export function ExpensesDashboard() {
           },
         ];
 
+  const currencySymbol =
+    summary.currency && summary.currency !== "$" ? summary.currency : "₹";
+
   return (
-    <View style={styles.container}>
-      {/* Month Selector Bar */}
-      <View style={styles.monthSelectorBar}>
-        <Pressable
-          onPress={handlePrevMonth}
-          style={styles.monthNavBtn}
-          accessibilityLabel="Previous month"
+    <View style={styles.dashboardContainer}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
+        <Accordion
+          type="single"
+          collapsible
+          defaultValue="overview"
         >
-          <Text style={styles.monthNavText}>‹</Text>
-        </Pressable>
+        <AccordionItem value="overview">
+          <AccordionTrigger>
+            <View style={styles.accordionHeaderLeft}>
+              <View style={styles.accordionTitleCol}>
+                <Text style={styles.accordionHeaderTitle}>
+                  📊 Expenses & Analytics
+                </Text>
+                <Text style={styles.accordionHeaderSub}>
+                  {rangeLabel} · {filteredExpenses.length} item{filteredExpenses.length === 1 ? "" : "s"}
+                </Text>
+              </View>
+              <Badge variant="default" style={styles.accordionHeaderBadge}>
+                <BadgeText style={{ fontSize: 13, fontWeight: "700" }}>
+                  {currencySymbol}
+                  {summary.totalThisMonth.toFixed(2)}
+                </BadgeText>
+              </Badge>
+            </View>
+          </AccordionTrigger>
 
-        <View style={styles.monthTitleWrap}>
-          <Text style={[type.titleMd, styles.monthTitle]}>
-            {MONTH_NAMES[selectedMonth]} {selectedYear}
-          </Text>
-          {!isCurrentMonth && (
-            <Pressable onPress={handleResetToCurrent} style={styles.resetBadge}>
-              <Text style={styles.resetBadgeText}>Back to Today</Text>
-            </Pressable>
-          )}
-        </View>
+          <AccordionContent>
+            {/* 1. Selection of Range */}
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionSubHeading}>Selection of Range</Text>
+              <View style={styles.rangeInputRow}>
+                {/* Number Input with Stepper */}
+                <View style={styles.rangeNumberWrap}>
+                  <Text style={styles.rangeLabel}>Last</Text>
+                  <Pressable
+                    style={styles.rangeStepBtn}
+                    onPress={() => setRangeValue((v) => Math.max(1, v - 1))}
+                    accessibilityLabel="Decrease range"
+                  >
+                    <Text style={styles.rangeStepText}>−</Text>
+                  </Pressable>
+                  <View style={styles.rangeNumberBox}>
+                    <TextInput
+                      style={styles.rangeNumberInput}
+                      value={String(rangeValue)}
+                      onChangeText={(text) => {
+                        const cleaned = text.replace(/[^0-9]/g, "");
+                        if (!cleaned) {
+                          setRangeValue(1);
+                          return;
+                        }
+                        const num = parseInt(cleaned, 10);
+                        setRangeValue(Math.min(999, Math.max(1, num)));
+                      }}
+                      keyboardType="number-pad"
+                      maxLength={3}
+                      selectTextOnFocus
+                    />
+                  </View>
+                  <Pressable
+                    style={styles.rangeStepBtn}
+                    onPress={() => setRangeValue((v) => v + 1)}
+                    accessibilityLabel="Increase range"
+                  >
+                    <Text style={styles.rangeStepText}>+</Text>
+                  </Pressable>
+                </View>
 
-        <Pressable
-          onPress={handleNextMonth}
-          style={styles.monthNavBtn}
-          accessibilityLabel="Next month"
-        >
-          <Text style={styles.monthNavText}>›</Text>
-        </Pressable>
-      </View>
+                {/* Unit Selector */}
+                <View style={styles.rangeUnitRow}>
+                  {(["days", "months", "years"] as const).map((u) => (
+                    <Pressable
+                      key={u}
+                      style={[
+                        styles.rangeUnitBtn,
+                        rangeUnit === u && styles.rangeUnitBtnActive,
+                      ]}
+                      onPress={() => {
+                        setRangeUnit(u);
+                        setActiveCategoryFilter(null);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.rangeUnitText,
+                          rangeUnit === u && styles.rangeUnitTextActive,
+                        ]}
+                      >
+                        {u.charAt(0).toUpperCase() + u.slice(1)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            </View>
 
-      {/* Main Donut Chart Card */}
-      <Card style={styles.chartCard}>
-        <CardContent style={styles.chartCardContent}>
-          <View style={styles.chartOuterWrap}>
-            <PieChart
-              donut
-              data={pieData}
-              radius={96}
-              innerRadius={68}
-              innerCircleColor={colors.surfaceCard}
-              centerLabelComponent={() => (
-                <View style={styles.donutCenterLabel}>
-                  <Text style={[type.caption, styles.donutCenterSub]}>
-                    Total Spent
+            <Separator style={styles.sectionDivider} />
+
+            {/* 2. Graph & Categories (Tap to filter) */}
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionSubHeading}>Graph & Categories</Text>
+              <View style={styles.chartOuterWrap}>
+                <PieChart
+                  donut
+                  data={pieData}
+                  radius={96}
+                  innerRadius={68}
+                  innerCircleColor={colors.surfaceCard}
+                  centerLabelComponent={() => (
+                    <View style={styles.donutCenterLabel}>
+                      <Text style={[type.caption, styles.donutCenterSub]}>
+                        Total Spent
+                      </Text>
+                      <Text style={[type.displaySm, styles.donutCenterTotal]}>
+                        {currencySymbol}
+                        {summary.totalThisMonth.toFixed(2)}
+                      </Text>
+                      <Text style={styles.donutCenterCount}>
+                        {summary.transactionCount} item
+                        {summary.transactionCount === 1 ? "" : "s"}
+                      </Text>
+                    </View>
+                  )}
+                />
+              </View>
+
+              {/* Category Chips / Legend */}
+              {summary.categoryBreakdown.length > 0 ? (
+                <View style={styles.legendContainer}>
+                  <Text style={styles.legendHeading}>
+                    Categories (Tap to filter)
                   </Text>
-                  <Text style={[type.displaySm, styles.donutCenterTotal]}>
-                    {summary.currency}
-                    {summary.totalThisMonth.toFixed(2)}
+                  <View style={styles.legendGrid}>
+                    {summary.categoryBreakdown.map((cat: any) => {
+                      const isSelected = activeCategoryFilter === cat.category;
+                      const catColor = CATEGORY_COLORS[cat.category] || "#64748B";
+                      const icon = CATEGORY_ICONS[cat.category] || "📦";
+
+                      return (
+                        <Pressable
+                          key={cat.category}
+                          onPress={() =>
+                            setActiveCategoryFilter(
+                              isSelected ? null : cat.category
+                            )
+                          }
+                          style={[
+                            styles.legendChip,
+                            isSelected && {
+                              borderColor: catColor,
+                              backgroundColor: colors.surfaceSoft,
+                            },
+                          ]}
+                        >
+                          <View style={styles.legendChipLeft}>
+                            <View
+                              style={[
+                                styles.legendColorDot,
+                                { backgroundColor: catColor },
+                              ]}
+                            />
+                            <Text style={styles.legendChipIcon}>{icon}</Text>
+                            <Text style={styles.legendChipName} numberOfLines={1}>
+                              {cat.category}
+                            </Text>
+                          </View>
+                          <View style={styles.legendChipRight}>
+                            <Text style={styles.legendChipAmount}>
+                              {currencySymbol}
+                              {cat.total.toFixed(2)}
+                            </Text>
+                            <Badge
+                              variant={isSelected ? "default" : "outline"}
+                              style={styles.legendBadge}
+                            >
+                              <BadgeText style={{ fontSize: 10 }}>
+                                {cat.percentage}%
+                              </BadgeText>
+                            </Badge>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  {activeCategoryFilter && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Clear Category Filter"
+                      onPress={() => setActiveCategoryFilter(null)}
+                      style={{ alignSelf: "center", marginTop: spacing.xs }}
+                    />
+                  )}
+                </View>
+              ) : null}
+            </View>
+
+            <Separator style={styles.sectionDivider} />
+
+            {/* 3. Extracted Transactions */}
+            <View style={styles.sectionBlock}>
+              <View style={styles.transactionsHeaderRow}>
+                <Text style={styles.sectionSubHeading}>
+                  Extracted Transactions
+                </Text>
+                <Badge variant="outline">
+                  <BadgeText>{filteredExpenses.length}</BadgeText>
+                </Badge>
+              </View>
+
+              {filteredExpenses.length === 0 ? (
+                <View style={styles.emptyWrap}>
+                  <Text style={styles.emptyIcon}>🎙️</Text>
+                  <Text style={[type.titleSm, styles.emptyTitle]}>
+                    No expenses recorded for this period
                   </Text>
-                  <Text style={styles.donutCenterCount}>
-                    {summary.transactionCount} item{summary.transactionCount === 1 ? "" : "s"}
+                  <Text style={styles.emptySub}>
+                    Record an AI Voice Note mentioning your spending (e.g. &quot;Paid ₹150 for lunch and ₹300 for groceries&quot;), and AI will automatically calculate and track it here!
                   </Text>
+                  <Button
+                    title="✨ Record AI Voice Note"
+                    onPress={() => router.push("/ai-note")}
+                    style={{ marginTop: spacing.md }}
+                  />
+                </View>
+              ) : (
+                <View style={styles.transactionList}>
+                  {filteredExpenses.map((expense: any) => {
+                    const icon = CATEGORY_ICONS[expense.category] || "📦";
+                    const dateStr = new Date(expense.date).toLocaleDateString(
+                      undefined,
+                      {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      }
+                    );
+
+                    return (
+                      <Card key={expense._id} style={styles.transactionCard}>
+                        <CardContent style={styles.transactionContent}>
+                          <View style={styles.transactionLeft}>
+                            <View style={styles.transactionIconBox}>
+                              <Text style={{ fontSize: 20 }}>{icon}</Text>
+                            </View>
+                            <View style={styles.transactionInfo}>
+                              <Text style={styles.transactionItemName}>
+                                {expense.item}
+                              </Text>
+                              <View style={styles.transactionMeta}>
+                                <Text style={styles.transactionDate}>
+                                  {dateStr}
+                                </Text>
+                                <Text style={styles.transactionDot}>·</Text>
+                                <Text style={styles.transactionCategory}>
+                                  {expense.category}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+
+                          <View style={styles.transactionRight}>
+                            <Text style={styles.transactionAmount}>
+                              {expense.currency && expense.currency !== "$"
+                                ? expense.currency
+                                : "₹"}
+                              {expense.amount.toFixed(2)}
+                            </Text>
+                            <Pressable
+                              onPress={() => router.push(`/note/${expense.noteId}`)}
+                              style={styles.viewNoteBtn}
+                              accessibilityLabel="View source voice note"
+                            >
+                              <Text style={styles.viewNoteText}>View Note ↗</Text>
+                            </Pressable>
+                          </View>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </View>
               )}
-            />
-          </View>
-
-          {/* Category Chips / Legend */}
-          {summary.categoryBreakdown.length > 0 ? (
-            <View style={styles.legendContainer}>
-              <Text style={styles.legendHeading}>Categories (Tap to filter)</Text>
-              <View style={styles.legendGrid}>
-                {summary.categoryBreakdown.map((cat: any) => {
-                  const isSelected = activeCategoryFilter === cat.category;
-                  const catColor = CATEGORY_COLORS[cat.category] || "#64748B";
-                  const icon = CATEGORY_ICONS[cat.category] || "📦";
-
-                  return (
-                    <Pressable
-                      key={cat.category}
-                      onPress={() =>
-                        setActiveCategoryFilter(isSelected ? null : cat.category)
-                      }
-                      style={[
-                        styles.legendChip,
-                        isSelected && { borderColor: catColor, backgroundColor: colors.surfaceSoft },
-                      ]}
-                    >
-                      <View style={styles.legendChipLeft}>
-                        <View
-                          style={[
-                            styles.legendColorDot,
-                            { backgroundColor: catColor },
-                          ]}
-                        />
-                        <Text style={styles.legendChipIcon}>{icon}</Text>
-                        <Text style={styles.legendChipName} numberOfLines={1}>
-                          {cat.category}
-                        </Text>
-                      </View>
-                      <View style={styles.legendChipRight}>
-                        <Text style={styles.legendChipAmount}>
-                          {summary.currency}
-                          {cat.total.toFixed(2)}
-                        </Text>
-                        <Badge
-                          variant={isSelected ? "default" : "outline"}
-                          style={styles.legendBadge}
-                        >
-                          <BadgeText style={{ fontSize: 10 }}>
-                            {cat.percentage}%
-                          </BadgeText>
-                        </Badge>
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {activeCategoryFilter && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  title="Clear Category Filter"
-                  onPress={() => setActiveCategoryFilter(null)}
-                  style={{ alignSelf: "center", marginTop: spacing.xs }}
-                />
-              )}
             </View>
-          ) : null}
-        </CardContent>
-      </Card>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </ScrollView>
 
-      {/* Transactions Section Header */}
-      <View style={styles.sectionHeader}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Text style={[type.titleSm, styles.sectionTitle]}>
-            Extracted Transactions
-          </Text>
-          <Badge variant="outline">
-            <BadgeText>{filteredExpenses.length}</BadgeText>
-          </Badge>
-        </View>
-      </View>
-
-      {/* Transactions List */}
-      {filteredExpenses.length === 0 ? (
-        <Card style={styles.emptyCard}>
-          <CardContent style={styles.emptyCardContent}>
-            <Text style={styles.emptyIcon}>🎙️</Text>
-            <Text style={[type.titleSm, styles.emptyTitle]}>
-              No expenses recorded for this period
-            </Text>
-            <Text style={styles.emptySub}>
-              Record an AI Voice Note mentioning your spending (e.g. &quot;Paid $15 for lunch and $30 for groceries&quot;), and AI will automatically calculate and track it here!
-            </Text>
-            <Button
-              title="✨ Record AI Voice Note"
-              onPress={() => router.push("/ai-note")}
-              style={{ marginTop: spacing.md }}
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <View style={styles.transactionList}>
-          {filteredExpenses.map((expense: any) => {
-            const icon = CATEGORY_ICONS[expense.category] || "📦";
-            const dateStr = new Date(expense.date).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            });
-
-            return (
-              <Card key={expense._id} style={styles.transactionCard}>
-                <CardContent style={styles.transactionContent}>
-                  <View style={styles.transactionLeft}>
-                    <View style={styles.transactionIconBox}>
-                      <Text style={{ fontSize: 20 }}>{icon}</Text>
-                    </View>
-                    <View style={styles.transactionInfo}>
-                      <Text style={styles.transactionItemName}>
-                        {expense.item}
-                      </Text>
-                      <View style={styles.transactionMeta}>
-                        <Text style={styles.transactionDate}>{dateStr}</Text>
-                        <Text style={styles.transactionDot}>·</Text>
-                        <Text style={styles.transactionCategory}>
-                          {expense.category}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View style={styles.transactionRight}>
-                    <Text style={styles.transactionAmount}>
-                      {expense.currency}
-                      {expense.amount.toFixed(2)}
-                    </Text>
-                    <Pressable
-                      onPress={() => router.push(`/note/${expense.noteId}`)}
-                      style={styles.viewNoteBtn}
-                      accessibilityLabel="View source voice note"
-                    >
-                      <Text style={styles.viewNoteText}>View Note ↗</Text>
-                    </Pressable>
-                  </View>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </View>
-      )}
-    </View>
+    {showScrollTop && (
+      <Pressable
+        style={styles.scrollToTopBtn}
+        onPress={handleScrollToTop}
+        accessibilityRole="button"
+        accessibilityLabel="Scroll to top"
+      >
+        <Text style={styles.scrollToTopText}>↑</Text>
+      </Pressable>
+    )}
+  </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingBottom: spacing.xxl,
+  dashboardContainer: {
+    flex: 1,
+    position: "relative",
+    width: "100%",
+  },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+  },
+  scrollContent: {
+    padding: spacing.md,
+    paddingBottom: 120,
+    maxWidth: maxContentWidth,
+    width: "100%",
+    alignSelf: "center",
+  },
+  scrollToTopBtn: {
+    position: "absolute",
+    right: 24,
+    bottom: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 5,
+    zIndex: 29,
+    ...(Platform.OS === "web"
+      ? ({ cursor: "pointer", userSelect: "none" } as any)
+      : {}),
+  },
+  scrollToTopText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.primary,
+    lineHeight: 20,
   },
   loadingWrap: {
+    flex: 1,
     padding: spacing.md,
     gap: spacing.md,
+    maxWidth: maxContentWidth,
+    width: "100%",
+    alignSelf: "center",
   },
-  monthSelectorBar: {
+  accordionHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    flex: 1,
+    paddingRight: spacing.xs,
+  },
+  accordionTitleCol: {
+    gap: 2,
+  },
+  accordionHeaderTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.ink,
+  },
+  accordionHeaderSub: {
+    fontSize: 12,
+    color: colors.muted,
+    fontWeight: "500",
+  },
+  accordionHeaderBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  sectionBlock: {
+    gap: spacing.sm,
+  },
+  sectionSubHeading: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  sectionDivider: {
+    marginVertical: spacing.md,
+  },
+  transactionsHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  emptyWrap: {
+    alignItems: "center",
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+  },
+  rangeSelectorBar: {
     backgroundColor: colors.surfaceCard,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.hairline,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    padding: spacing.md,
     marginBottom: spacing.md,
+    gap: spacing.sm,
   },
-  monthNavBtn: {
-    width: 36,
-    height: 36,
+  rangeInputRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    flexWrap: "wrap",
+  },
+  rangeNumberWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  rangeLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.ink,
+    marginRight: 2,
+  },
+  rangeStepBtn: {
+    width: 32,
+    height: 32,
     borderRadius: radius.sm,
     backgroundColor: colors.surfaceSoft,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    alignItems: "center",
+    justifyContent: "center",
     ...(Platform.OS === "web" ? ({ cursor: "pointer", userSelect: "none" } as any) : {}),
   },
-  monthNavText: {
-    fontSize: 20,
+  rangeStepText: {
+    fontSize: 16,
     fontWeight: "600",
     color: colors.ink,
-    lineHeight: 22,
+    lineHeight: 18,
   },
-  monthTitleWrap: {
+  rangeNumberBox: {
+    minWidth: 50,
+    height: 32,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.surfaceCard,
     alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
   },
-  monthTitle: {
-    color: colors.ink,
+  rangeNumberInput: {
+    fontSize: 15,
     fontWeight: "700",
+    color: colors.ink,
+    textAlign: "center",
+    width: "100%",
+    padding: 0,
+    margin: 0,
+    outlineWidth: 0,
   },
-  resetBadge: {
-    marginTop: 2,
-    ...(Platform.OS === "web" ? ({ cursor: "pointer" } as any) : {}),
+  rangeUnitRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: radius.md,
+    padding: 2,
+    gap: 2,
   },
-  resetBadgeText: {
-    fontSize: 11,
-    color: colors.primary,
+  rangeUnitBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.sm,
+    ...(Platform.OS === "web" ? ({ cursor: "pointer", userSelect: "none" } as any) : {}),
+  },
+  rangeUnitBtnActive: {
+    backgroundColor: colors.surfaceCard,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  rangeUnitText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: colors.muted,
+  },
+  rangeUnitTextActive: {
     fontWeight: "600",
+    color: colors.ink,
+  },
+  rangeDateSpan: {
+    fontSize: 12,
+    color: colors.muted,
+    fontWeight: "500",
   },
   chartCard: {
     backgroundColor: colors.surfaceCard,

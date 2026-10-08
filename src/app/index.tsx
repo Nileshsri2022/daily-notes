@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import {
@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { NoteCover } from "@/components/note-cover";
 import { ExpensesDashboard } from "@/components/expenses-dashboard";
+import { TagMultiSelect } from "@/components/tag-multi-select";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,20 +55,51 @@ export default function Feed() {
   const toggleTaskMutation = useMutation(api.notes.toggleTask);
   const { setOpen: setSidebarOpen } = useSidebar();
 
+  const notesListRef = useRef<FlatList>(null);
+  const tasksListRef = useRef<FlatList>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
   const [mainTab, setMainTab] = useState<"notes" | "tasks" | "expenses">("notes");
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [hideCompletedTasks, setHideCompletedTasks] = useState(false);
+
+  const handleScroll = (e: any) => {
+    const y = e.nativeEvent.contentOffset.y;
+    setShowScrollTop(y > 120);
+  };
+
+  const handleScrollToTop = () => {
+    if (mainTab === "notes") {
+      notesListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    } else if (mainTab === "tasks") {
+      tasksListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }
+  };
 
   const allTags = notes
     ? [...new Set(notes.flatMap((note) => note.tags ?? []))]
     : [];
 
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (notes ?? []).forEach((note) => {
+      if (note.deletedAt === undefined) {
+        (note.tags ?? []).forEach((t) => {
+          counts[t] = (counts[t] || 0) + 1;
+        });
+      }
+    });
+    return counts;
+  }, [notes]);
+
   const visibleNotes = notes
     ? (
-        activeTag
-          ? notes.filter((note) => (note.tags ?? []).includes(activeTag))
+        selectedTags.length > 0
+          ? notes.filter((note) =>
+              (note.tags ?? []).some((tag) => selectedTags.includes(tag))
+            )
           : notes
       )
         .filter((note) => note.deletedAt === undefined)
@@ -327,7 +359,9 @@ export default function Feed() {
                         variant={mainTab === "expenses" ? "default" : "outline"}
                       >
                         <BadgeText>
-                          {expenseSummary.currency}
+                          {expenseSummary.currency && expenseSummary.currency !== "$"
+                            ? expenseSummary.currency
+                            : "₹"}
                           {Math.round(expenseSummary.totalThisMonth)}
                         </BadgeText>
                       </Badge>
@@ -381,101 +415,41 @@ export default function Feed() {
         </View>
       ) : (
         <View style={styles.container}>
-          {/* Centered Controls Container */}
-          {mainTab !== "expenses" ? (
-            <View style={styles.controlsWrap}>
-            {/* Search Input */}
-            <Input
-              placeholder={
-                mainTab === "notes" ? "Search notes…" : "Search action items…"
-              }
-              value={query}
-              onChangeText={setQuery}
-              autoCapitalize="none"
-              style={styles.searchInput}
-            />
-
-            {/* Tag Filter (Notes tab only) */}
-            {mainTab === "notes" && allTags.length > 0 ? (
-              <View style={styles.chipsContainer}>
-                {allTags.map((tag) => {
-                  const isActive = activeTag === tag;
-                  return (
-                    <Pressable
-                      key={tag}
-                      style={[
-                        styles.chip,
-                        isActive ? styles.chipActive : styles.chipInactive,
-                      ]}
-                      onPress={() => setActiveTag(isActive ? null : tag)}
-                    >
-                      <Text
-                        style={[
-                          type.caption,
-                          isActive
-                            ? styles.chipTextActive
-                            : styles.chipTextInactive,
-                        ]}
-                      >
-                        #{tag}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : null}
-
-            {/* Action Items Subheader & Hide Completed Toggle (Tasks tab only) */}
-            {mainTab === "tasks" ? (
-              <View style={styles.actionItemsHeaderWrap}>
-                <View style={styles.actionItemsTitleRow}>
-                  <Text style={[type.displaySm, styles.actionItemsTitle]}>
-                    Action Items
-                  </Text>
-                  {totalPendingCount > 0 ? (
-                    <Badge variant="default" style={styles.actionTabBadge}>
-                      <BadgeText style={styles.actionTabBadgeText}>
-                        {totalPendingCount} pending
-                      </BadgeText>
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline">
-                      <BadgeText>All done</BadgeText>
-                    </Badge>
-                  )}
-                </View>
-                <View style={styles.tasksSubBar}>
-                  <Text style={[type.caption, styles.tasksSubStats]}>
-                    {totalPendingCount} pending · {totalCompletedCount} done
-                  </Text>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    title={
-                      hideCompletedTasks ? "Show Completed" : "Hide Completed"
-                    }
-                    onPress={() => setHideCompletedTasks(!hideCompletedTasks)}
-                    style={styles.hideCompletedBtn}
-                  />
-                </View>
-              </View>
-            ) : null}
-          </View>
-          ) : null}
-
           {/* Tab 1: Notes List */}
           {mainTab === "notes" ? (
             <FlatList
+              ref={notesListRef}
               data={visibleNotes}
               keyExtractor={(item) => item._id}
               renderItem={renderNoteItem}
               contentContainerStyle={styles.list}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              ListHeaderComponent={
+                <View style={styles.listHeaderWrap}>
+                  <Input
+                    placeholder="Search notes…"
+                    value={query}
+                    onChangeText={setQuery}
+                    autoCapitalize="none"
+                    style={styles.searchInput}
+                  />
+                  {allTags.length > 0 && (
+                    <TagMultiSelect
+                      allTags={allTags}
+                      selectedTags={selectedTags}
+                      onSelectedTagsChange={setSelectedTags}
+                      tagCounts={tagCounts}
+                    />
+                  )}
+                </View>
+              }
               ListEmptyComponent={
                 <Text style={styles.emptyMessage}>
                   {query.trim()
                     ? `No notes matching "${query.trim()}".`
-                    : activeTag
-                      ? `No notes tagged #${activeTag}.`
+                    : selectedTags.length > 0
+                      ? `No notes matching selected tags: ${selectedTags.map((t) => `#${t}`).join(", ")}.`
                       : "No notes yet.\nTap the + button to write your first one."}
                 </Text>
               }
@@ -485,10 +459,56 @@ export default function Feed() {
           {/* Tab 2: Action Items List */}
           {mainTab === "tasks" ? (
             <FlatList
+              ref={tasksListRef}
               data={filteredNotesWithTasks}
               keyExtractor={(item) => item.note._id}
               renderItem={renderTaskGroup}
               contentContainerStyle={styles.list}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              ListHeaderComponent={
+                <View style={styles.listHeaderWrap}>
+                  <Input
+                    placeholder="Search action items…"
+                    value={query}
+                    onChangeText={setQuery}
+                    autoCapitalize="none"
+                    style={styles.searchInput}
+                  />
+                  <View style={styles.actionItemsHeaderWrap}>
+                    <View style={styles.actionItemsTitleRow}>
+                      <Text style={[type.displaySm, styles.actionItemsTitle]}>
+                        Action Items
+                      </Text>
+                      {totalPendingCount > 0 ? (
+                        <Badge variant="default" style={styles.actionTabBadge}>
+                          <BadgeText style={styles.actionTabBadgeText}>
+                            {totalPendingCount} pending
+                          </BadgeText>
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">
+                          <BadgeText>All done</BadgeText>
+                        </Badge>
+                      )}
+                    </View>
+                    <View style={styles.tasksSubBar}>
+                      <Text style={[type.caption, styles.tasksSubStats]}>
+                        {totalPendingCount} pending · {totalCompletedCount} done
+                      </Text>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title={
+                          hideCompletedTasks ? "Show Completed" : "Hide Completed"
+                        }
+                        onPress={() => setHideCompletedTasks(!hideCompletedTasks)}
+                        style={styles.hideCompletedBtn}
+                      />
+                    </View>
+                  </View>
+                </View>
+              }
               ListEmptyComponent={
                 <View style={styles.taskEmptyContainer}>
                   <Text style={styles.taskEmptyIcon}>📋</Text>
@@ -571,6 +591,18 @@ export default function Feed() {
               </Pressable>
             </View>
           ) : null}
+
+          {/* Scroll to Top Upward Arrow Button */}
+          {showScrollTop && (
+            <Pressable
+              style={styles.scrollToTopBtn}
+              onPress={handleScrollToTop}
+              accessibilityRole="button"
+              accessibilityLabel="Scroll to top"
+            >
+              <Text style={styles.scrollToTopText}>↑</Text>
+            </Pressable>
+          )}
 
           {/* Floating Action Button */}
           <Pressable
@@ -669,37 +701,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.mutedSoft,
     textAlign: "center",
-  },
-  chipsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-    paddingVertical: 2,
-  },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-  },
-  chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  chipInactive: {
-    backgroundColor: colors.surfaceCard,
-    borderColor: colors.hairline,
-  },
-  chipTextActive: {
-    color: colors.onPrimary,
-    fontWeight: "600",
-  },
-  chipTextInactive: {
-    color: colors.muted,
   },
   tasksSubBar: {
     flexDirection: "row",
@@ -912,5 +913,37 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 14,
     fontWeight: "600",
+  },
+  listHeaderWrap: {
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  scrollToTopBtn: {
+    position: "absolute",
+    right: 24,
+    bottom: 92,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 5,
+    zIndex: 29,
+    ...(Platform.OS === "web"
+      ? ({ cursor: "pointer", userSelect: "none" } as any)
+      : {}),
+  },
+  scrollToTopText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.primary,
+    lineHeight: 20,
   },
 });
