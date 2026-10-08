@@ -359,36 +359,6 @@ export default function Feed() {
             </SidebarMenu>
           </SidebarGroup>
 
-          {/* Tags Filtering */}
-          {allTags.length > 0 ? (
-            <SidebarGroup>
-              <SidebarGroupLabel>TAGS</SidebarGroupLabel>
-              <SidebarMenu>
-                {allTags.map((tag) => {
-                  const isTagActive =
-                    activeTag === tag && mainTab === "notes";
-                  return (
-                    <SidebarMenuItem key={tag}>
-                      <SidebarMenuButton
-                        isActive={isTagActive}
-                        icon={
-                          <Text style={{ fontSize: 14, color: colors.muted }}>
-                            #
-                          </Text>
-                        }
-                        title={tag}
-                        onPress={() => {
-                          setMainTab("notes");
-                          setActiveTag(activeTag === tag ? null : tag);
-                          setSidebarOpen(false);
-                        }}
-                      />
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroup>
-          ) : null}
         </SidebarContent>
 
         <SidebarFooter>
