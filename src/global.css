@@ -1,3 +1,23 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-border: #e4e4e7;
+  --color-input: #e4e4e7;
+  --color-ring: #3F6B4F;
+  --color-background: #FAF6EE;
+  --color-foreground: #18181b;
+  --color-primary: #3F6B4F;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f4f4f5;
+  --color-secondary-foreground: #18181b;
+  --color-destructive: #A63D2F;
+  --color-destructive-foreground: #ffffff;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #6F685B;
+  --color-accent: #f4f4f5;
+  --color-accent-foreground: #18181b;
+  --color-card: #ffffff;
+  --color-card-foreground: #18181b;
+}

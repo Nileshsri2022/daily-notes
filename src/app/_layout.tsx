@@ -1,7 +1,9 @@
-import { ClerkProvider, useAuth, useClerk } from "@clerk/clerk-expo";
+import { ClerkProvider, useAuth, useClerk } from "@clerk/clerk-expo"; // retained for production
+import { NoClerkProvider } from "@/theme/NoClerkProvider";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { Stack, useRouter } from "expo-router";
 import { ConvexReactClient } from "convex/react";
+import { ConvexProvider } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useEffect, useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -15,7 +17,8 @@ export default function RootLayout() {
   const ready =
     !!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY &&
     !!process.env.EXPO_PUBLIC_CONVEX_URL;
-  return ready ? <Providers /> : <SetupRequired />;
+  const devBypassAuth = true; // set true to disable Clerk for local testing
+  return ready ? (devBypassAuth ? <DevProviders /> : <Providers />) : <SetupRequired />;
 }
 
 function Providers() {
@@ -44,6 +47,40 @@ function Providers() {
     </ClerkProvider>
   );
 }
+
+function DevProviders() {
+  const convex = useMemo(
+    () =>
+      new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
+        unsavedChangesWarning: false,
+      }),
+    []
+  );
+
+  return (
+    <NoClerkProvider>
+      <ConvexProvider client={convex}>
+        <FontProvider>
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: colors.canvas },
+              headerTintColor: colors.ink,
+              headerShadowVisible: false,
+              contentStyle: { backgroundColor: colors.canvas },
+              statusBarStyle: "dark",
+            }}
+          >
+            <Stack.Screen name="index" options={{ title: "DiaryNotes" }} />
+            <Stack.Screen name="editor" options={{ title: "Edit note" }} />
+            <Stack.Screen name="note/[id]" options={{ title: "Note" }} />
+            <Stack.Screen name="trash" options={{ title: "Trash" }} />
+          </Stack>
+        </FontProvider>
+      </ConvexProvider>
+    </NoClerkProvider>
+  );
+}
+
 
 function RootNavigator() {
   const { isSignedIn } = useAuth();

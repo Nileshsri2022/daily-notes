@@ -47,5 +47,7 @@ example
 .vscode/
 .zcode/
 .superpowers/
+.claude/
+.agents/
 dist/
 docs/

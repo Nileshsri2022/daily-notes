@@ -14,7 +14,6 @@ import type { Doc, Id } from "../../convex/_generated/dataModel";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
-import { themeVars } from "@/theme/theme-provider";
 import { colors, maxContentWidth, spacing } from "@/constants/theme";
 
 const confirmDeleteForever = (onConfirm: () => void) => {
@@ -24,7 +23,7 @@ const confirmDeleteForever = (onConfirm: () => void) => {
   }
   Alert.alert("Delete forever?", "This note will be permanently removed.", [
     { text: "Cancel", style: "cancel" },
-    { text: "Delete", style: "destructive", onPress: onConfirm },
+    { text: "Delete Forever", style: "destructive", onPress: onConfirm },
   ]);
 };
 
@@ -34,11 +33,14 @@ export default function Trash() {
   const removeNote = useMutation(api.notes.remove);
 
   const renderItem = ({ item }: { item: Doc<"notes"> }) => (
-    <Card>
+    <Card style={styles.card}>
       <CardContent>
         <CardTitle numberOfLines={1}>{item.title}</CardTitle>
-        <CardDescription style={{ marginTop: spacing.xxs }}>
-          Deleted {new Date(item.deletedAt ?? item.updatedAt).toLocaleString()}
+        <CardDescription style={styles.cardDesc}>
+          Deleted {new Date(item.deletedAt ?? item.updatedAt).toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
         </CardDescription>
         <View style={styles.actions}>
           <Button
@@ -48,18 +50,15 @@ export default function Trash() {
             onPress={() => void restore({ id: item._id as Id<"notes"> })}
           />
           <Button
-            variant="ghost"
+            variant="destructive"
             size="sm"
+            title="Delete forever"
             onPress={() =>
               confirmDeleteForever(() =>
                 void removeNote({ id: item._id as Id<"notes"> })
               )
             }
-          >
-            <Text style={{ color: colors.error, fontSize: 14, fontWeight: "500" }}>
-              Delete forever
-            </Text>
-          </Button>
+          />
         </View>
       </CardContent>
     </Card>
@@ -67,19 +66,11 @@ export default function Trash() {
 
   return (
     <SafeAreaView
-      style={[themeVars, { flex: 1, backgroundColor: colors.canvas }]}
-      edges={["top", "left", "right"]}
+      style={styles.safe}
+      edges={["bottom", "left", "right"]}
     >
       {trashed === undefined ? (
-        <Text
-          style={{
-            textAlign: "center",
-            marginTop: spacing.xxl,
-            color: colors.muted,
-          }}
-        >
-          Loading…
-        </Text>
+        <Text style={styles.loadingMessage}>Loading…</Text>
       ) : (
         <FlatList
           data={trashed}
@@ -87,13 +78,7 @@ export default function Trash() {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text
-              style={{
-                textAlign: "center",
-                marginTop: spacing.xxl,
-                color: colors.muted,
-              }}
-            >
+            <Text style={styles.emptyMessage}>
               Trash is empty.
             </Text>
           }
@@ -104,6 +89,26 @@ export default function Trash() {
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: colors.canvas,
+  },
+  card: {
+    backgroundColor: colors.surfaceCard,
+  },
+  cardDesc: {
+    marginTop: spacing.xxs,
+  },
+  loadingMessage: {
+    textAlign: "center",
+    marginTop: spacing.xxl,
+    color: colors.muted,
+  },
+  emptyMessage: {
+    textAlign: "center",
+    marginTop: spacing.xxl,
+    color: colors.muted,
+  },
   list: {
     padding: spacing.md,
     gap: spacing.sm,
@@ -113,7 +118,10 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
-    gap: spacing.xs,
-    marginTop: spacing.sm,
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.hairlineSoft,
   },
 });
