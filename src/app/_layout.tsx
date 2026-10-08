@@ -18,7 +18,8 @@ export default function RootLayout() {
   const ready =
     !!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY &&
     !!process.env.EXPO_PUBLIC_CONVEX_URL;
-  const devBypassAuth = true; // set true to disable Clerk for local testing
+  const isDev = process.env.EXPO_PUBLIC_APP_ENV !== "prod";
+  const devBypassAuth = isDev && process.env.EXPO_PUBLIC_BYPASS_AUTH !== "false";
   return ready ? (devBypassAuth ? <DevProviders /> : <Providers />) : <SetupRequired />;
 }
 
