@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -20,6 +19,15 @@ import { MarkdownView } from "@/components/markdown-view";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import {
   colors,
@@ -126,9 +134,6 @@ export default function AINote() {
       const match = raw.match(/Uncaught Error:\s*([^\n\r]+)/);
       const cleanMsg = match ? match[1].trim() : raw.replace(/^\[CONVEX[^\]]*\]\s*/, "").split("\n")[0].trim();
       setErrorMessage(cleanMsg);
-      if (Platform.OS !== "web") {
-        Alert.alert("AI Error", cleanMsg);
-      }
     } finally {
       setLoading(false);
     }
@@ -201,61 +206,26 @@ export default function AINote() {
                     </Pressable>
                   </View>
 
-                  <Pressable
-                    style={styles.modelTrigger}
-                    onPress={() => setModelPickerOpen((prev) => !prev)}
+                  <Select
+                    value={selectedModel}
+                    onValueChange={setSelectedModel}
+                    open={modelPickerOpen}
+                    onOpenChange={setModelPickerOpen}
                   >
-                    <View style={styles.modelTriggerLeft}>
-                      <Text style={styles.modelSparkle}>⚡</Text>
-                      <Text
-                        style={[type.bodySm, styles.modelTriggerText]}
-                        numberOfLines={1}
-                      >
-                        {selectedModel}
-                      </Text>
-                    </View>
-                    <Text style={styles.modelTriggerCaret}>
-                      {modelPickerOpen ? "▲" : "▼"}
-                    </Text>
-                  </Pressable>
-
-                  {modelPickerOpen ? (
-                    <View style={styles.modelDropdown}>
-                      <ScrollView
-                        style={styles.modelDropdownScroll}
-                        nestedScrollEnabled
-                      >
-                        {models.map((m) => {
-                          const isSelected = m === selectedModel;
-                          return (
-                            <Pressable
-                              key={m}
-                              style={[
-                                styles.modelDropdownItem,
-                                isSelected && styles.modelDropdownItemActive,
-                              ]}
-                              onPress={() => {
-                                setSelectedModel(m);
-                                setModelPickerOpen(false);
-                              }}
-                            >
-                              <Text
-                                style={[
-                                  type.bodySm,
-                                  isSelected
-                                    ? styles.modelDropdownTextActive
-                                    : styles.modelDropdownText,
-                                ]}
-                                numberOfLines={1}
-                              >
-                                {isSelected ? "✓  " : "   "}{m}
-                              </Text>
-                            </Pressable>
-                          );
-                        })}
-                      </ScrollView>
-                    </View>
-                  ) : null}
+                    <SelectTrigger>
+                      <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                        <Text style={{ marginRight: 6 }}>⚡</Text>
+                        <SelectValue placeholder="Select a model" />
+                      </View>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {models.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </View>
 
                 {/* Microphone Record Hero */}
@@ -314,11 +284,12 @@ export default function AINote() {
                   />
                 </View>
 
-                {/* Error Banner if any */}
+                {/* Error Banner with shadcn Alert */}
                 {errorMessage ? (
-                  <View style={styles.errorBanner}>
-                    <Text style={styles.errorText}>{errorMessage}</Text>
-                  </View>
+                  <Alert variant="destructive" style={{ marginTop: spacing.xs, marginBottom: spacing.sm }}>
+                    <AlertTitle>Generation Notice</AlertTitle>
+                    <AlertDescription>{errorMessage}</AlertDescription>
+                  </Alert>
                 ) : null}
 
                 {/* Actions */}
@@ -364,67 +335,42 @@ export default function AINote() {
                   className="mb-3"
                 />
 
-                {/* Body Content with Tabs: Rendered vs Source */}
-                <View style={styles.tabBar}>
-                  <Pressable
-                    style={[
-                      styles.tab,
-                      previewTab === "rendered" && styles.tabActive,
-                    ]}
-                    onPress={() => setPreviewTab("rendered")}
-                  >
-                    <Text
-                      style={[
-                        type.caption,
-                        previewTab === "rendered"
-                          ? styles.tabTextActive
-                          : styles.tabText,
-                      ]}
-                    >
-                      Formatted Preview
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[
-                      styles.tab,
-                      previewTab === "source" && styles.tabActive,
-                    ]}
-                    onPress={() => setPreviewTab("source")}
-                  >
-                    <Text
-                      style={[
-                        type.caption,
-                        previewTab === "source"
-                          ? styles.tabTextActive
-                          : styles.tabText,
-                      ]}
-                    >
-                      Edit Markdown Source
-                    </Text>
-                  </Pressable>
-                </View>
+                {/* Body Content with shadcn Tabs */}
+                <Tabs
+                  value={previewTab}
+                  onValueChange={(val) => setPreviewTab(val as "rendered" | "source")}
+                  className="mb-3"
+                >
+                  <TabsList>
+                    <TabsTrigger value="rendered" title="Formatted Preview" />
+                    <TabsTrigger value="source" title="Edit Markdown Source" />
+                  </TabsList>
 
-                {previewTab === "rendered" ? (
-                  <Card style={styles.markdownCard}>
-                    <CardContent>
-                      <MarkdownView markdown={body} />
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <TextInput
-                    style={[type.body, styles.sourceInput]}
-                    value={body}
-                    onChangeText={setBody}
-                    multiline
-                    textAlignVertical="top"
-                  />
-                )}
+                  <TabsContent value="rendered">
+                    <Card style={styles.markdownCard}>
+                      <CardContent>
+                        <MarkdownView markdown={body} />
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="source">
+                    <TextInput
+                      style={[type.body, styles.sourceInput]}
+                      value={body}
+                      onChangeText={setBody}
+                      multiline
+                      textAlignVertical="top"
+                    />
+                  </TabsContent>
+                </Tabs>
 
                 {/* Error Banner if any */}
                 {errorMessage ? (
-                  <View style={styles.errorBanner}>
-                    <Text style={styles.errorText}>{errorMessage}</Text>
-                  </View>
+                  <Alert variant="destructive" style={{ marginTop: spacing.xs, marginBottom: spacing.sm }}>
+                    <AlertTitle>Save Error</AlertTitle>
+                    <AlertDescription>{errorMessage}</AlertDescription>
+                  </Alert>
                 ) : null}
 
                 {/* Actions */}

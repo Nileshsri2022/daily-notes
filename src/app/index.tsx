@@ -18,6 +18,7 @@ import { NoteCover } from "@/components/note-cover";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   colors,
   maxContentWidth,
@@ -125,7 +126,14 @@ export default function Feed() {
       edges={["bottom", "left", "right"]}
     >
       {notes === undefined ? (
-        <Text style={styles.loadingMessage}>Loading…</Text>
+        <View style={styles.controlsWrap}>
+          <Skeleton style={{ height: 42, borderRadius: radius.md, marginBottom: spacing.md }} />
+          <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
+            <Skeleton style={{ height: 120, borderRadius: radius.lg }} />
+            <Skeleton style={{ height: 120, borderRadius: radius.lg }} />
+            <Skeleton style={{ height: 120, borderRadius: radius.lg }} />
+          </View>
+        </View>
       ) : (
         <View style={styles.container}>
           {/* Centered Controls Container */}

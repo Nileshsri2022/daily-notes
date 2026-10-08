@@ -1,8 +1,7 @@
+import { useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import {
-  Alert,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +17,18 @@ import { HtmlView } from "@/components/html-view";
 import { NoteCover } from "@/components/note-cover";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   colors,
   maxContentWidth,
@@ -27,22 +38,13 @@ import {
   type ThemeColors,
 } from "@/constants/theme";
 
-const confirmDeleteNote = (onConfirm: () => void) => {
-  if (Platform.OS === "web") {
-    if (window.confirm("Move this note to trash?")) onConfirm();
-    return;
-  }
-  Alert.alert("Move to trash?", "You can restore this note later from trash.", [
-    { text: "Cancel", style: "cancel" },
-    { text: "Move to Trash", style: "destructive", onPress: onConfirm },
-  ]);
-};
-
 export default function NoteView() {
   const router = useRouter();
   const styles = createStyles(colors);
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const note = useQuery(api.notes.get, id ? { id: id as Id<"notes"> } : "skip");
   const softDelete = useMutation(api.trash.softDelete);
@@ -50,11 +52,19 @@ export default function NoteView() {
   const setPinned = useMutation(api.notes.setPinned);
 
   const onDelete = () => {
+    setDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
     if (!id) return;
-    confirmDeleteNote(async () => {
+    setDeleting(true);
+    try {
       await softDelete({ id: id as Id<"notes"> });
+      setDeleteOpen(false);
       router.replace("/");
-    });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const onTogglePublish = async () => {
@@ -80,8 +90,12 @@ export default function NoteView() {
 
   if (note === undefined) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <Text style={styles.message}>Loading…</Text>
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ScrollView contentContainerStyle={styles.container}>
+          <Skeleton style={{ height: 38, width: "75%", marginBottom: spacing.md }} />
+          <Skeleton style={{ height: 22, width: "45%", marginBottom: spacing.lg }} />
+          <Skeleton style={{ height: 200, width: "100%", marginBottom: spacing.md }} />
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -117,9 +131,9 @@ export default function NoteView() {
         {(note.tags ?? []).length > 0 ? (
           <View style={styles.tagRow}>
             {(note.tags ?? []).map((tag) => (
-              <View key={tag} style={styles.tagPill}>
-                <Text style={[type.caption, styles.tagText]}>#{tag}</Text>
-              </View>
+              <Badge key={tag} variant="outline" style={{ marginRight: 6, marginBottom: 4 }}>
+                <BadgeText>#{tag}</BadgeText>
+              </Badge>
             ))}
           </View>
         ) : null}
@@ -152,6 +166,8 @@ export default function NoteView() {
           />
         </View>
 
+        <Separator style={{ marginVertical: spacing.md }} />
+
         {/* Note Body */}
         <View style={styles.bodyWrap}>
           {note.format === "html" ? (
@@ -160,6 +176,26 @@ export default function NoteView() {
             <MarkdownView markdown={note.body} />
           )}
         </View>
+
+        {/* Shadcn Alert Dialog for Delete */}
+        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Move note to trash?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You can restore this note later from your trash folder anytime.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onPress={() => setDeleteOpen(false)} />
+              <AlertDialogAction
+                title={deleting ? "Moving…" : "Move to Trash"}
+                onPress={handleConfirmDelete}
+                loading={deleting}
+              />
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,8 +1,7 @@
+import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import {
-  Alert,
   FlatList,
-  Platform,
   StyleSheet,
   Text,
   View,
@@ -14,23 +13,37 @@ import type { Doc, Id } from "../../convex/_generated/dataModel";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { colors, maxContentWidth, spacing } from "@/constants/theme";
-
-const confirmDeleteForever = (onConfirm: () => void) => {
-  if (Platform.OS === "web") {
-    if (window.confirm("Delete this note forever? This cannot be undone.")) onConfirm();
-    return;
-  }
-  Alert.alert("Delete forever?", "This note will be permanently removed.", [
-    { text: "Cancel", style: "cancel" },
-    { text: "Delete Forever", style: "destructive", onPress: onConfirm },
-  ]);
-};
 
 export default function Trash() {
   const trashed = useQuery(api.trash.listTrash);
   const restore = useMutation(api.trash.restore);
   const removeNote = useMutation(api.notes.remove);
+
+  const [deleteTarget, setDeleteTarget] = useState<Id<"notes"> | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await removeNote({ id: deleteTarget });
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const renderItem = ({ item }: { item: Doc<"notes"> }) => (
     <Card style={styles.card}>
@@ -53,11 +66,7 @@ export default function Trash() {
             variant="destructive"
             size="sm"
             title="Delete forever"
-            onPress={() =>
-              confirmDeleteForever(() =>
-                void removeNote({ id: item._id as Id<"notes"> })
-              )
-            }
+            onPress={() => setDeleteTarget(item._id as Id<"notes">)}
           />
         </View>
       </CardContent>
@@ -70,7 +79,11 @@ export default function Trash() {
       edges={["bottom", "left", "right"]}
     >
       {trashed === undefined ? (
-        <Text style={styles.loadingMessage}>Loading…</Text>
+        <View style={styles.list}>
+          <Skeleton style={{ height: 110, marginBottom: spacing.sm, borderRadius: 12 }} />
+          <Skeleton style={{ height: 110, marginBottom: spacing.sm, borderRadius: 12 }} />
+          <Skeleton style={{ height: 110, marginBottom: spacing.sm, borderRadius: 12 }} />
+        </View>
       ) : (
         <FlatList
           data={trashed}
@@ -84,6 +97,29 @@ export default function Trash() {
           }
         />
       )}
+
+      {/* Shadcn Alert Dialog for Permanent Delete */}
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete forever?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This note will be permanently removed. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onPress={() => setDeleteTarget(null)} />
+            <AlertDialogAction
+              title={deleting ? "Deleting…" : "Delete Forever"}
+              onPress={handleConfirmDelete}
+              loading={deleting}
+            />
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SafeAreaView>
   );
 }
