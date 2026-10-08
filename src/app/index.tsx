@@ -397,12 +397,7 @@ export default function Feed() {
 
             {/* Tag Filter (Notes tab only) */}
             {mainTab === "notes" && allTags.length > 0 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipsContainer}
-                style={styles.chipsScroll}
-              >
+              <View style={styles.chipsContainer}>
                 {allTags.map((tag) => {
                   const isActive = activeTag === tag;
                   return (
@@ -427,7 +422,7 @@ export default function Feed() {
                     </Pressable>
                   );
                 })}
-              </ScrollView>
+              </View>
             ) : null}
 
             {/* Action Items Subheader & Hide Completed Toggle (Tasks tab only) */}
@@ -675,13 +670,12 @@ const styles = StyleSheet.create({
     color: colors.mutedSoft,
     textAlign: "center",
   },
-  chipsScroll: {
-    marginTop: spacing.xs,
-  },
   chipsContainer: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: spacing.xs,
+    marginTop: spacing.xs,
     paddingVertical: 2,
   },
   chip: {
