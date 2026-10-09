@@ -5,7 +5,7 @@ import { Stack, useRouter } from "expo-router";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProvider } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { verifyInstallation } from "nativewind";
@@ -83,6 +83,11 @@ function DevProviders() {
                 options={{
                   title: "Dincharya",
                   headerLeft: () => <SidebarTrigger style={{ marginRight: 12 }} />,
+                  headerRight: () => (
+                    <View style={styles.headerActions}>
+                      <HeaderTrashButton />
+                    </View>
+                  ),
                 }}
               />
               <Stack.Screen name="editor" options={{ title: "Edit note" }} />
@@ -126,12 +131,7 @@ function RootNavigator() {
               headerLeft: () => <SidebarTrigger style={{ marginRight: 12 }} />,
               headerRight: () => (
                 <View style={styles.headerActions}>
-                  <Pressable
-                    onPress={() => router.push("/trash")}
-                    style={styles.headerAction}
-                  >
-                    <Text style={styles.headerLink}>Trash</Text>
-                  </Pressable>
+                  <HeaderTrashButton />
                   <SignOutButton />
                 </View>
               ),
@@ -150,14 +150,53 @@ function RootNavigator() {
   );
 }
 
+function HeaderTrashButton() {
+  const router = useRouter();
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <Pressable
+      onPress={() => router.push("/trash")}
+      accessibilityRole="button"
+      accessibilityLabel="Open Trash"
+      // @ts-ignore web-only
+      onMouseEnter={() => setHovered(true)}
+      // @ts-ignore web-only
+      onMouseLeave={() => setHovered(false)}
+      style={({ pressed }) => [
+        styles.headerBtn,
+        hovered && styles.headerBtnHover,
+        pressed && styles.headerBtnPressed,
+      ]}
+    >
+      <Text style={styles.headerBtnIcon}>🗑️</Text>
+      <Text style={styles.headerBtnText}>Trash</Text>
+    </Pressable>
+  );
+}
+
 function SignOutButton() {
   const { signOut } = useClerk();
+  const [hovered, setHovered] = useState(false);
+
   return (
     <Pressable
       onPress={() => void signOut()}
-      style={styles.headerAction}
+      accessibilityRole="button"
+      accessibilityLabel="Sign out"
+      // @ts-ignore web-only
+      onMouseEnter={() => setHovered(true)}
+      // @ts-ignore web-only
+      onMouseLeave={() => setHovered(false)}
+      style={({ pressed }) => [
+        styles.headerBtn,
+        styles.signOutBtn,
+        hovered && styles.signOutBtnHover,
+        pressed && styles.headerBtnPressed,
+      ]}
     >
-      <Text style={[styles.headerLink, { color: colors.ink }]}>Sign out</Text>
+      <Text style={styles.headerBtnIcon}>🚪</Text>
+      <Text style={[styles.headerBtnText, styles.signOutText]}>Sign out</Text>
     </Pressable>
   );
 }
@@ -187,16 +226,51 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
-  headerLink: {
-    fontSize: 14,
+  headerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 11,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.surfaceCard,
+    // subtle elevation
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  headerBtnHover: {
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.mutedSoft,
+  },
+  headerBtnPressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.97 }],
+  },
+  headerBtnIcon: {
+    fontSize: 13,
+  },
+  headerBtnText: {
+    fontSize: 13,
     fontWeight: "500",
+    color: colors.ink,
   },
-  headerAction: {
-    minHeight: 44,
-    minWidth: 44,
-    justifyContent: "center",
-    alignItems: "flex-end",
+  signOutBtn: {
+    borderColor: "#fecdd3", // soft rose
+    backgroundColor: "#fff1f2",
+  },
+  signOutBtnHover: {
+    backgroundColor: "#ffe4e6",
+    borderColor: "#fda4af",
+  },
+  signOutText: {
+    color: "#be123c", // refined ruby
+    fontWeight: "500",
   },
 });
