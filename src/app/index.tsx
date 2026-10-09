@@ -229,8 +229,8 @@ export default function Feed() {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={mainTab === "expenses"}
-                  icon={<Text style={{ fontSize: 16 }}>💳</Text>}
-                  title="Expenses"
+                  icon={<Text style={{ fontSize: 16 }}>📊</Text>}
+                  title="Analytics"
                   badge={
                     expenseSummary && expenseSummary.totalThisMonth > 0 ? (
                       <Badge

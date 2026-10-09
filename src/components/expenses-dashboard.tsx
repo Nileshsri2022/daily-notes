@@ -1,7 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -58,18 +56,6 @@ export function ExpensesDashboard() {
   const budgetStatus = useQuery(api.budgets.getBudgetStatus);
   const setBudgetMutation = useMutation(api.budgets.setBudget);
 
-  const scrollRef = useRef<ScrollView>(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-
-  const handleScroll = (e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
-    setShowScrollTop(y > 120);
-  };
-
-  const handleScrollToTop = () => {
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
-  };
-
   // Format the date range label
   const rangeLabel = useMemo(() => {
     const start = new Date(startDate);
@@ -103,18 +89,14 @@ export function ExpensesDashboard() {
   return (
     <View style={styles.dashboardContainer}>
       <ScrollView
-        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
       >
         <Accordion
           type="single"
           collapsible
-          defaultValue="overview"
         >
           {/* Accordion Item 1: Expenses & Analytics */}
           <AccordionItem value="overview">
@@ -122,7 +104,7 @@ export function ExpensesDashboard() {
               <View style={styles.accordionHeaderLeft}>
                 <View style={styles.accordionTitleCol}>
                   <Text style={styles.accordionHeaderTitle}>
-                    📊 Expenses & Analytics
+                    💳 Expenses
                   </Text>
                   <Text style={styles.accordionHeaderSub}>
                     {rangeLabel} · {filteredExpenses.length} item{filteredExpenses.length === 1 ? "" : "s"}
@@ -250,17 +232,6 @@ export function ExpensesDashboard() {
         </Accordion>
       </ScrollView>
 
-      {showScrollTop && (
-        <Pressable
-          style={styles.scrollToTopBtn}
-          onPress={handleScrollToTop}
-          accessibilityRole="button"
-          accessibilityLabel="Scroll to top"
-        >
-          <Text style={styles.scrollToTopText}>↑</Text>
-        </Pressable>
-      )}
-
       {/* Budget Configuration Modal */}
       <BudgetSettingsModal
         visible={settingsModalVisible}
@@ -290,34 +261,6 @@ const styles = StyleSheet.create({
     maxWidth: maxContentWidth,
     width: "100%",
     alignSelf: "center",
-  },
-  scrollToTopBtn: {
-    position: "absolute",
-    right: 24,
-    bottom: 24,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 5,
-    zIndex: 29,
-    ...(Platform.OS === "web"
-      ? ({ cursor: "pointer", userSelect: "none" } as any)
-      : {}),
-  },
-  scrollToTopText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.primary,
-    lineHeight: 20,
   },
   loadingWrap: {
     flex: 1,
