@@ -55,5 +55,8 @@
     "lint": "expo lint",
     "test": "playwright test tests/"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "private": true
 }
