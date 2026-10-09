@@ -52,5 +52,5 @@ example
 .claude/
 .agents/
 dist/
-docs/
+!docs/
 test-results/
