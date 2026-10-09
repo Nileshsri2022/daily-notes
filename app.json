@@ -1,16 +1,18 @@
 {
   "expo": {
-    "name": "DiaryNotes",
-    "slug": "diarynotes",
+    "name": "Dincharya",
+    "slug": "dincharya",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "diarynotes",
+    "scheme": "dincharya",
     "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.nilesh.dincharya",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -37,14 +39,14 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow DiaryNotes to pick a cover photo."
+          "photosPermission": "Allow Dincharya to pick a cover photo."
         }
       ],
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "Allow DiaryNotes to use the microphone.",
-          "speechRecognitionPermission": "Allow DiaryNotes to use speech recognition."
+          "microphonePermission": "Allow Dincharya to use the microphone.",
+          "speechRecognitionPermission": "Allow Dincharya to use speech recognition."
         }
       ],
       "expo-font"

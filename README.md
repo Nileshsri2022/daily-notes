@@ -1,4 +1,4 @@
-# DiaryNotes
+# Dincharya
 
 A minimal Medium-style notes/diary app. One TypeScript codebase (Expo / React Native) that runs on **Android, iOS, and web**.
 
