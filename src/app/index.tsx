@@ -12,7 +12,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useClerk } from "@clerk/clerk-expo";
 
 import { NoteCover } from "@/components/note-cover";
@@ -160,8 +160,10 @@ export default function Feed() {
     </Pressable>
   );
 
+  const bottomInset = insets?.bottom ?? 0;
+
   return (
-    <SafeAreaView style={styles.safe} edges={["left", "right"]}>
+    <View style={styles.safe}>
       {/* Sidebar Navigation Drawer */}
       <Sidebar>
         <SidebarContent>
@@ -273,12 +275,13 @@ export default function Feed() {
           {/* Tab 1: Notes List */}
           {mainTab === "notes" ? (
             <FlatList
+              style={{ flex: 1 }}
               data={visibleNotes}
               keyExtractor={(item) => item._id}
               renderItem={renderNoteItem}
               contentContainerStyle={[
                 styles.list,
-                isMobile && { paddingBottom: 140 + insets.bottom },
+                isMobile && { paddingBottom: 140 + bottomInset },
               ]}
               contentInsetAdjustmentBehavior="automatic"
               keyboardShouldPersistTaps="handled"
@@ -320,167 +323,171 @@ export default function Feed() {
 
           {/* Tab 3: Expenses Dashboard */}
           {mainTab === "expenses" ? <ExpensesDashboard /> : null}
-
-          {/* Mobile Bottom Navigation Bar */}
-          {isMobile ? (
-            <View
-              style={[
-                styles.bottomTabBar,
-                { paddingBottom: Math.max(insets.bottom, 8) },
-              ]}
-            >
-              <Pressable
-                style={styles.bottomTabItem}
-                onPress={() => setMainTab("notes")}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: mainTab === "notes" }}
-                accessibilityLabel="Notes tab"
-              >
-                <View
-                  style={[
-                    styles.bottomTabIconWrap,
-                    mainTab === "notes" && styles.bottomTabIconWrapActive,
-                  ]}
-                >
-                  <Text style={styles.bottomTabEmoji}>📝</Text>
-                </View>
-                <Text
-                  style={[
-                    styles.bottomTabLabel,
-                    mainTab === "notes" && styles.bottomTabLabelActive,
-                  ]}
-                >
-                  Notes
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.bottomTabItem}
-                onPress={() => setMainTab("tasks")}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: mainTab === "tasks" }}
-                accessibilityLabel="Action Items tab"
-              >
-                <View
-                  style={[
-                    styles.bottomTabIconWrap,
-                    mainTab === "tasks" && styles.bottomTabIconWrapActive,
-                  ]}
-                >
-                  <Text style={styles.bottomTabEmoji}>✅</Text>
-                  {totalPendingCount > 0 ? (
-                    <View style={styles.bottomTabBadge}>
-                      <Text style={styles.bottomTabBadgeText}>
-                        {totalPendingCount > 99 ? "99+" : totalPendingCount}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Text
-                  style={[
-                    styles.bottomTabLabel,
-                    mainTab === "tasks" && styles.bottomTabLabelActive,
-                  ]}
-                >
-                  Tasks
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.bottomTabItem}
-                onPress={() => setMainTab("expenses")}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: mainTab === "expenses" }}
-                accessibilityLabel="Analytics tab"
-              >
-                <View
-                  style={[
-                    styles.bottomTabIconWrap,
-                    mainTab === "expenses" && styles.bottomTabIconWrapActive,
-                  ]}
-                >
-                  <Text style={styles.bottomTabEmoji}>📊</Text>
-                </View>
-                <Text
-                  style={[
-                    styles.bottomTabLabel,
-                    mainTab === "expenses" && styles.bottomTabLabelActive,
-                  ]}
-                >
-                  Analytics
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          {/* Menu Backdrop */}
-          {menuOpen ? (
-            <Pressable
-              style={styles.backdrop}
-              onPress={() => setMenuOpen(false)}
-            />
-          ) : null}
-
-          {/* Floating Action Menu Options */}
-          {menuOpen ? (
-            <View
-              style={[
-                styles.fabMenu,
-                isMobile && {
-                  bottom: 144 + Math.max(insets.bottom, 10),
-                  right: 20,
-                },
-              ]}
-            >
-              <Pressable
-                style={({ pressed }) => [
-                  styles.fabMenuItem,
-                  pressed && styles.fabMenuItemPressed,
-                ]}
-                onPress={() => {
-                  setMenuOpen(false);
-                  router.push("/ai-note");
-                }}
-              >
-                <Text style={styles.fabMenuIcon}>✨</Text>
-                <Text style={styles.fabMenuText}>AI Voice Note</Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [
-                  styles.fabMenuItem,
-                  pressed && styles.fabMenuItemPressed,
-                ]}
-                onPress={() => {
-                  setMenuOpen(false);
-                  router.push("/editor");
-                }}
-              >
-                <Text style={styles.fabMenuIcon}>✍️</Text>
-                <Text style={styles.fabMenuText}>Manual Note</Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          {/* Floating Action Button */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.fab,
-              isMobile && {
-                bottom: 76 + Math.max(insets.bottom, 10),
-                right: 20,
-              },
-              menuOpen && styles.fabActive,
-              pressed && styles.fabPressed,
-            ]}
-            onPress={() => setMenuOpen(!menuOpen)}
-            accessibilityLabel={menuOpen ? "Close menu" : "Create note"}
-          >
-            <Text style={styles.fabIcon}>{menuOpen ? "✕" : "+"}</Text>
-          </Pressable>
         </View>
       )}
-    </SafeAreaView>
+
+      {/* Floating Overlay Layer (Bottom Tab Bar & FAB) */}
+      <View style={styles.overlayLayer} pointerEvents="box-none">
+        {/* Mobile Bottom Navigation Bar */}
+        {isMobile ? (
+          <View
+            style={[
+              styles.bottomTabBar,
+              { paddingBottom: Math.max(bottomInset, 8) },
+            ]}
+          >
+            <Pressable
+              style={styles.bottomTabItem}
+              onPress={() => setMainTab("notes")}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: mainTab === "notes" }}
+              accessibilityLabel="Notes tab"
+            >
+              <View
+                style={[
+                  styles.bottomTabIconWrap,
+                  mainTab === "notes" && styles.bottomTabIconWrapActive,
+                ]}
+              >
+                <Text style={styles.bottomTabEmoji}>📝</Text>
+              </View>
+              <Text
+                style={[
+                  styles.bottomTabLabel,
+                  mainTab === "notes" && styles.bottomTabLabelActive,
+                ]}
+              >
+                Notes
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.bottomTabItem}
+              onPress={() => setMainTab("tasks")}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: mainTab === "tasks" }}
+              accessibilityLabel="Action Items tab"
+            >
+              <View
+                style={[
+                  styles.bottomTabIconWrap,
+                  mainTab === "tasks" && styles.bottomTabIconWrapActive,
+                ]}
+              >
+                <Text style={styles.bottomTabEmoji}>✅</Text>
+                {totalPendingCount > 0 ? (
+                  <View style={styles.bottomTabBadge}>
+                    <Text style={styles.bottomTabBadgeText}>
+                      {totalPendingCount > 99 ? "99+" : totalPendingCount}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text
+                style={[
+                  styles.bottomTabLabel,
+                  mainTab === "tasks" && styles.bottomTabLabelActive,
+                ]}
+              >
+                Tasks
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.bottomTabItem}
+              onPress={() => setMainTab("expenses")}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: mainTab === "expenses" }}
+              accessibilityLabel="Analytics tab"
+            >
+              <View
+                style={[
+                  styles.bottomTabIconWrap,
+                  mainTab === "expenses" && styles.bottomTabIconWrapActive,
+                ]}
+              >
+                <Text style={styles.bottomTabEmoji}>📊</Text>
+              </View>
+              <Text
+                style={[
+                  styles.bottomTabLabel,
+                  mainTab === "expenses" && styles.bottomTabLabelActive,
+                ]}
+              >
+                Analytics
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {/* Menu Backdrop */}
+        {menuOpen ? (
+          <Pressable
+            style={styles.backdrop}
+            onPress={() => setMenuOpen(false)}
+          />
+        ) : null}
+
+        {/* Floating Action Menu Options */}
+        {menuOpen ? (
+          <View
+            style={[
+              styles.fabMenu,
+              isMobile && {
+                bottom: 144 + Math.max(bottomInset, 10),
+                right: 20,
+              },
+            ]}
+          >
+            <Pressable
+              style={({ pressed }) => [
+                styles.fabMenuItem,
+                pressed && styles.fabMenuItemPressed,
+              ]}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push("/ai-note");
+              }}
+            >
+              <Text style={styles.fabMenuIcon}>✨</Text>
+              <Text style={styles.fabMenuText}>AI Voice Note</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.fabMenuItem,
+                pressed && styles.fabMenuItemPressed,
+              ]}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push("/editor");
+              }}
+            >
+              <Text style={styles.fabMenuIcon}>✍️</Text>
+              <Text style={styles.fabMenuText}>Manual Note</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {/* Floating Action Button */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.fab,
+            isMobile && {
+              bottom: 76 + Math.max(bottomInset, 10),
+              right: 20,
+            },
+            menuOpen && styles.fabActive,
+            pressed && styles.fabPressed,
+          ]}
+          onPress={() => setMenuOpen(!menuOpen)}
+          accessibilityLabel={menuOpen ? "Close menu" : "Create note"}
+          accessibilityRole="button"
+        >
+          <Text style={styles.fabIcon}>{menuOpen ? "✕" : "+"}</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -491,7 +498,16 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    width: "100%",
     position: "relative",
+  },
+  overlayLayer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 99,
   },
   controlsWrap: {
     maxWidth: maxContentWidth,
@@ -577,11 +593,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 20,
+    boxShadow: "0 4px 14px rgba(0, 0, 0, 0.28)",
+    elevation: 8,
     zIndex: 99,
     ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
   },
@@ -607,7 +620,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: "rgba(24, 24, 27, 0.25)",
     zIndex: 50,
-    elevation: 15,
   },
   fabMenu: {
     position: "absolute",
@@ -616,7 +628,6 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     alignItems: "flex-end",
     zIndex: 99,
-    elevation: 20,
   },
   fabMenuItem: {
     flexDirection: "row",
@@ -627,11 +638,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.hairline,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 20,
+    boxShadow: "0 3px 10px rgba(0, 0, 0, 0.15)",
+    elevation: 4,
     gap: spacing.xs,
     ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
   },
@@ -664,11 +672,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 25,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 8,
+    boxShadow: "0 -2px 10px rgba(0, 0, 0, 0.08)",
+    elevation: 4,
   },
   bottomTabItem: {
     flex: 1,
