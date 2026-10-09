@@ -8,6 +8,13 @@ export async function currentUserId(
   return identity?.subject ?? "dev_user";
 }
 
+export async function currentUserEmail(
+  ctx: QueryCtx | MutationCtx
+): Promise<string | null> {
+  const identity = await ctx.auth.getUserIdentity();
+  return identity?.email ?? process.env.DEFAULT_ALERT_EMAIL ?? null;
+}
+
 /** Throws unless the signed-in user owns the note; returns it. */
 export async function requireNote(
   ctx: MutationCtx,

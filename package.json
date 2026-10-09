@@ -51,7 +51,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "playwright test tests/tasks.spec.ts"
+    "test": "playwright test tests/"
   },
   "private": true
 }

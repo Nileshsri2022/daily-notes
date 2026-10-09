@@ -37,4 +37,24 @@ export default defineSchema({
     .index("by_user_date", ["clerkUserId", "date"])
     .index("by_note", ["noteId"])
     .index("by_user_category", ["clerkUserId", "category"]),
+
+  userBudgets: defineTable({
+    clerkUserId: v.string(),
+    amount: v.number(),
+    durationDays: v.number(),
+    cycleStartDate: v.number(),
+    cycleEndDate: v.number(),
+    lastAlertThreshold: v.optional(v.number()),
+  }).index("by_user", ["clerkUserId"]),
+
+  budgetCycles: defineTable({
+    clerkUserId: v.string(),
+    budgetAmount: v.number(),
+    durationDays: v.number(),
+    startDate: v.number(),
+    endDate: v.number(),
+    actualSpent: v.number(),
+    overrun: v.number(),
+  }).index("by_user", ["clerkUserId"]),
 });
+

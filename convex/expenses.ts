@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { currentUserId, requireNote } from "./helpers";
 
@@ -212,6 +213,14 @@ export const logFromNote = mutation({
         date: note.updatedAt || Date.now(),
       });
       insertedIds.push(id);
+    }
+
+    if (insertedIds.length > 0) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.budgets.checkAndTriggerThresholdAlert,
+        { userId }
+      );
     }
 
     return insertedIds;

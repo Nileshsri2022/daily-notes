@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
   Accordion,
@@ -22,11 +22,16 @@ import { colors, maxContentWidth, radius, spacing } from "@/constants/theme";
 import { RangePicker } from "./expenses/range-picker";
 import { CategoryDonutChart } from "./expenses/category-donut-chart";
 import { TransactionList } from "./expenses/transaction-list";
+import { BudgetActiveCard } from "./expenses/budget-active-card";
+import { BudgetComparisonChart } from "./expenses/budget-comparison-chart";
+import { BudgetOverrunSummary } from "./expenses/budget-overrun-summary";
+import { BudgetSettingsModal } from "./expenses/budget-settings-modal";
 
 export function ExpensesDashboard() {
   const [rangeValue, setRangeValue] = useState(30);
   const [rangeUnit, setRangeUnit] = useState<"days" | "months" | "years">("days");
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
   // Calculate rolling date range (memoized to prevent re-query loops)
   const { startDate, endDate } = useMemo(() => {
@@ -50,6 +55,8 @@ export function ExpensesDashboard() {
 
   const summary = useQuery(api.expenses.getSummary, { startDate, endDate });
   const rawExpenses = useQuery(api.expenses.list, { startDate, endDate });
+  const budgetStatus = useQuery(api.budgets.getBudgetStatus);
+  const setBudgetMutation = useMutation(api.budgets.setBudget);
 
   const scrollRef = useRef<ScrollView>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -72,7 +79,7 @@ export function ExpensesDashboard() {
     return `${fmt(start)} – ${fmt(end)}`;
   }, [startDate, endDate]);
 
-  if (summary === undefined || rawExpenses === undefined) {
+  if (summary === undefined || rawExpenses === undefined || budgetStatus === undefined) {
     return (
       <View style={styles.loadingWrap}>
         <Skeleton style={{ height: 260, borderRadius: radius.lg, marginBottom: spacing.md }} />
@@ -88,6 +95,10 @@ export function ExpensesDashboard() {
 
   const currencySymbol =
     summary.currency && summary.currency !== "$" ? summary.currency : "₹";
+
+  const handleSaveBudget = async (amount: number, durationDays: number) => {
+    await setBudgetMutation({ amount, durationDays });
+  };
 
   return (
     <View style={styles.dashboardContainer}>
@@ -105,6 +116,7 @@ export function ExpensesDashboard() {
           collapsible
           defaultValue="overview"
         >
+          {/* Accordion Item 1: Expenses & Analytics */}
           <AccordionItem value="overview">
             <AccordionTrigger>
               <View style={styles.accordionHeaderLeft}>
@@ -158,6 +170,83 @@ export function ExpensesDashboard() {
               />
             </AccordionContent>
           </AccordionItem>
+
+          {/* Accordion Item 2: 🎯 Budget & Overrun Tracking */}
+          <AccordionItem value="budget">
+            <AccordionTrigger>
+              <View style={styles.accordionHeaderLeft}>
+                <View style={styles.accordionTitleCol}>
+                  <Text style={styles.accordionHeaderTitle}>
+                    🎯 Budget & Overrun Tracking
+                  </Text>
+                  <Text style={styles.accordionHeaderSub}>
+                    {budgetStatus.hasBudget
+                      ? `${currencySymbol}${budgetStatus.currentSpent.toFixed(0)} of ${currencySymbol}${budgetStatus.budget.amount.toFixed(0)} (${budgetStatus.daysLeft}d left)`
+                      : "No active $D$-day budget set"}
+                  </Text>
+                </View>
+                {budgetStatus.hasBudget ? (
+                  <Badge
+                    variant={budgetStatus.percentage >= 80 ? "default" : "outline"}
+                    style={[
+                      styles.accordionHeaderBadge,
+                      budgetStatus.percentage >= 100 && { backgroundColor: "#EF4444" },
+                      budgetStatus.percentage >= 80 && budgetStatus.percentage < 100 && { backgroundColor: "#F59E0B" },
+                    ]}
+                  >
+                    <BadgeText style={{ fontSize: 13, fontWeight: "700" }}>
+                      {budgetStatus.percentage}%
+                    </BadgeText>
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" style={styles.accordionHeaderBadge}>
+                    <BadgeText style={{ fontSize: 11 }}>Setup</BadgeText>
+                  </Badge>
+                )}
+              </View>
+            </AccordionTrigger>
+
+            <AccordionContent>
+              {/* 1. Active Cycle Pacing Card */}
+              <BudgetActiveCard
+                hasBudget={budgetStatus.hasBudget}
+                budgetAmount={budgetStatus.hasBudget ? budgetStatus.budget.amount : undefined}
+                durationDays={budgetStatus.hasBudget ? budgetStatus.budget.durationDays : undefined}
+                currentSpent={budgetStatus.hasBudget ? budgetStatus.currentSpent : undefined}
+                percentage={budgetStatus.hasBudget ? budgetStatus.percentage : undefined}
+                daysElapsed={budgetStatus.hasBudget ? budgetStatus.daysElapsed : undefined}
+                daysLeft={budgetStatus.hasBudget ? budgetStatus.daysLeft : undefined}
+                burnRate={budgetStatus.hasBudget ? budgetStatus.burnRate : undefined}
+                safeDailySpend={budgetStatus.hasBudget ? budgetStatus.safeDailySpend : undefined}
+                currencySymbol={currencySymbol}
+                onOpenSettings={() => setSettingsModalVisible(true)}
+              />
+
+              {budgetStatus.hasBudget && (
+                <>
+                  <Separator style={styles.sectionDivider} />
+
+                  {/* 2. Target vs Historical Avg vs Current Bar Chart */}
+                  <BudgetComparisonChart
+                    targetBudget={budgetStatus.budget.amount}
+                    historicalAvgSpent={budgetStatus.historicalAverageSpent}
+                    currentSpent={budgetStatus.currentSpent}
+                    currencySymbol={currencySymbol}
+                  />
+
+                  <Separator style={styles.sectionDivider} />
+
+                  {/* 3. Historical Overrun Callouts */}
+                  <BudgetOverrunSummary
+                    lastCycleOverrun={budgetStatus.lastCycleOverrun}
+                    historicalAverageOverrun={budgetStatus.historicalAverageOverrun}
+                    completedCyclesCount={budgetStatus.completedCyclesCount}
+                    currencySymbol={currencySymbol}
+                  />
+                </>
+              )}
+            </AccordionContent>
+          </AccordionItem>
         </Accordion>
       </ScrollView>
 
@@ -171,6 +260,16 @@ export function ExpensesDashboard() {
           <Text style={styles.scrollToTopText}>↑</Text>
         </Pressable>
       )}
+
+      {/* Budget Configuration Modal */}
+      <BudgetSettingsModal
+        visible={settingsModalVisible}
+        initialAmount={budgetStatus.hasBudget ? budgetStatus.budget.amount : 10000}
+        initialDurationDays={budgetStatus.hasBudget ? budgetStatus.budget.durationDays : 14}
+        currencySymbol={currencySymbol}
+        onClose={() => setSettingsModalVisible(false)}
+        onSave={handleSaveBudget}
+      />
     </View>
   );
 }
