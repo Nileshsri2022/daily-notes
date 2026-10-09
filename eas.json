@@ -26,7 +26,7 @@
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://giddy-coyote-544.convex.cloud",
         "EXPO_PUBLIC_CONVEX_SITE_URL": "https://giddy-coyote-544.convex.site",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZGFpbHktbm90ZXMtcnVkZHkudmVyY2VsLmFwcCQ",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_aGVscGVkLWJlYWdsZS03NzU2LmNsZXJrLmFjY291bnRzLmRldiQ",
         "EXPO_PUBLIC_APP_ENV": "prod",
         "EXPO_PUBLIC_BYPASS_AUTH": "false",
         "REACT_NATIVE_ARCHITECTURES": "arm64-v8a"
