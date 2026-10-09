@@ -6,7 +6,7 @@ import { ConvexReactClient } from "convex/react";
 import { ConvexProvider } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { verifyInstallation } from "nativewind";
 import { colors } from "@/constants/theme";
@@ -83,11 +83,14 @@ function DevProviders() {
                 options={{
                   title: "Dincharya",
                   headerLeft: () => <SidebarTrigger style={{ marginRight: 12 }} />,
-                  headerRight: () => (
-                    <View style={styles.headerActions}>
-                      <HeaderTrashButton />
-                    </View>
-                  ),
+                  headerRight:
+                    Platform.OS === "web"
+                      ? () => (
+                          <View style={styles.headerActions}>
+                            <HeaderTrashButton />
+                          </View>
+                        )
+                      : undefined,
                 }}
               />
               <Stack.Screen name="editor" options={{ title: "Edit note" }} />
@@ -137,12 +140,15 @@ function RootNavigator() {
             options={{
               title: "Dincharya",
               headerLeft: () => <SidebarTrigger style={{ marginRight: 12 }} />,
-              headerRight: () => (
-                <View style={styles.headerActions}>
-                  <HeaderTrashButton />
-                  <SignOutButton />
-                </View>
-              ),
+              headerRight:
+                Platform.OS === "web"
+                  ? () => (
+                      <View style={styles.headerActions}>
+                        <HeaderTrashButton />
+                        <SignOutButton />
+                      </View>
+                    )
+                  : undefined,
             }}
           />
         <Stack.Screen name="editor" options={{ title: "Edit note" }} />

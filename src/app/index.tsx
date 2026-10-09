@@ -10,8 +10,10 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useClerk } from "@clerk/clerk-expo";
 
 import { NoteCover } from "@/components/note-cover";
 import { ActionItemsView } from "@/components/action-items-view";
@@ -49,6 +51,9 @@ export default function Feed() {
   const router = useRouter();
   const notes = useQuery(api.notes.list);
   const { setOpen: setSidebarOpen } = useSidebar();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isMobile = Platform.OS !== "web" || width < 768;
 
   const [mainTab, setMainTab] = useState<"notes" | "tasks" | "expenses">("notes");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -240,9 +245,27 @@ export default function Feed() {
         </SidebarContent>
 
         <SidebarFooter>
-          <Text style={styles.sidebarShortcutHint}>
-            Press Ctrl+B to toggle sidebar
-          </Text>
+          {Platform.OS === "web" ? (
+            <Text style={styles.sidebarShortcutHint}>
+              Press Ctrl+B to toggle sidebar
+            </Text>
+          ) : (
+            <View style={styles.mobileDrawerFooter}>
+              <Pressable
+                onPress={() => {
+                  setSidebarOpen(false);
+                  router.push("/trash");
+                }}
+                style={styles.mobileDrawerActionBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Open Trash"
+              >
+                <Text style={{ fontSize: 16 }}>🗑️</Text>
+                <Text style={styles.mobileDrawerActionText}>Trash</Text>
+              </Pressable>
+              <MobileDrawerSignOutButton onSignedOut={() => setSidebarOpen(false)} />
+            </View>
+          )}
         </SidebarFooter>
       </Sidebar>
 
@@ -265,7 +288,12 @@ export default function Feed() {
               data={visibleNotes}
               keyExtractor={(item) => item._id}
               renderItem={renderNoteItem}
-              contentContainerStyle={styles.list}
+              contentContainerStyle={[
+                styles.list,
+                isMobile && { paddingBottom: 140 + insets.bottom },
+              ]}
+              contentInsetAdjustmentBehavior="automatic"
+              keyboardShouldPersistTaps="handled"
               ListHeaderComponent={
                 <View style={styles.listHeaderWrap}>
                   <Input
@@ -315,7 +343,15 @@ export default function Feed() {
 
           {/* Floating Action Menu Options */}
           {menuOpen ? (
-            <View style={styles.fabMenu}>
+            <View
+              style={[
+                styles.fabMenu,
+                isMobile && {
+                  bottom: 120 + Math.max(insets.bottom, 10),
+                  right: 20,
+                },
+              ]}
+            >
               <Pressable
                 style={({ pressed }) => [
                   styles.fabMenuItem,
@@ -350,6 +386,10 @@ export default function Feed() {
           <Pressable
             style={({ pressed }) => [
               styles.fab,
+              isMobile && {
+                bottom: 56 + Math.max(insets.bottom, 10),
+                right: 20,
+              },
               menuOpen && styles.fabActive,
               pressed && styles.fabPressed,
             ]}
@@ -358,6 +398,98 @@ export default function Feed() {
           >
             <Text style={styles.fabIcon}>{menuOpen ? "✕" : "+"}</Text>
           </Pressable>
+
+          {/* Mobile Bottom Navigation Bar */}
+          {isMobile ? (
+            <View
+              style={[
+                styles.bottomTabBar,
+                { paddingBottom: Math.max(insets.bottom, 8) },
+              ]}
+            >
+              <Pressable
+                style={styles.bottomTabItem}
+                onPress={() => setMainTab("notes")}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: mainTab === "notes" }}
+                accessibilityLabel="Notes tab"
+              >
+                <View
+                  style={[
+                    styles.bottomTabIconWrap,
+                    mainTab === "notes" && styles.bottomTabIconWrapActive,
+                  ]}
+                >
+                  <Text style={styles.bottomTabEmoji}>📝</Text>
+                </View>
+                <Text
+                  style={[
+                    styles.bottomTabLabel,
+                    mainTab === "notes" && styles.bottomTabLabelActive,
+                  ]}
+                >
+                  Notes
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.bottomTabItem}
+                onPress={() => setMainTab("tasks")}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: mainTab === "tasks" }}
+                accessibilityLabel="Action Items tab"
+              >
+                <View
+                  style={[
+                    styles.bottomTabIconWrap,
+                    mainTab === "tasks" && styles.bottomTabIconWrapActive,
+                  ]}
+                >
+                  <Text style={styles.bottomTabEmoji}>✅</Text>
+                  {totalPendingCount > 0 ? (
+                    <View style={styles.bottomTabBadge}>
+                      <Text style={styles.bottomTabBadgeText}>
+                        {totalPendingCount > 99 ? "99+" : totalPendingCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text
+                  style={[
+                    styles.bottomTabLabel,
+                    mainTab === "tasks" && styles.bottomTabLabelActive,
+                  ]}
+                >
+                  Tasks
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.bottomTabItem}
+                onPress={() => setMainTab("expenses")}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: mainTab === "expenses" }}
+                accessibilityLabel="Analytics tab"
+              >
+                <View
+                  style={[
+                    styles.bottomTabIconWrap,
+                    mainTab === "expenses" && styles.bottomTabIconWrapActive,
+                  ]}
+                >
+                  <Text style={styles.bottomTabEmoji}>📊</Text>
+                </View>
+                <Text
+                  style={[
+                    styles.bottomTabLabel,
+                    mainTab === "expenses" && styles.bottomTabLabelActive,
+                  ]}
+                >
+                  Analytics
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
       )}
     </SafeAreaView>
@@ -529,4 +661,120 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginBottom: spacing.xs,
   },
+  bottomTabBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    backgroundColor: colors.surfaceCard,
+    borderTopWidth: 1,
+    borderTopColor: colors.hairline,
+    paddingTop: 8,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 25,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  bottomTabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 4,
+  },
+  bottomTabIconWrap: {
+    width: 36,
+    height: 28,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  bottomTabIconWrapActive: {
+    backgroundColor: colors.surfaceSoft,
+  },
+  bottomTabEmoji: {
+    fontSize: 18,
+  },
+  bottomTabBadge: {
+    position: "absolute",
+    top: -2,
+    right: -4,
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    minWidth: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bottomTabBadgeText: {
+    color: colors.onPrimary,
+    fontSize: 9,
+    fontWeight: "700",
+  },
+  bottomTabLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: colors.muted,
+    marginTop: 2,
+  },
+  bottomTabLabelActive: {
+    color: colors.primary,
+    fontWeight: "700",
+  },
+  mobileDrawerFooter: {
+    gap: 8,
+  },
+  mobileDrawerActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSoft,
+  },
+  mobileDrawerSignOutBtn: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: colors.hairline,
+  },
+  mobileDrawerActionText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.ink,
+  },
 });
+
+function MobileDrawerSignOutButton({ onSignedOut }: { onSignedOut: () => void }) {
+  const isDevBypass =
+    process.env.EXPO_PUBLIC_APP_ENV !== "prod" &&
+    process.env.EXPO_PUBLIC_BYPASS_AUTH !== "false";
+  if (isDevBypass) return null;
+  return <RealClerkSignOut onSignedOut={onSignedOut} />;
+}
+
+function RealClerkSignOut({ onSignedOut }: { onSignedOut: () => void }) {
+  const { signOut } = useClerk();
+  return (
+    <Pressable
+      onPress={() => {
+        onSignedOut();
+        void signOut();
+      }}
+      style={[styles.mobileDrawerActionBtn, styles.mobileDrawerSignOutBtn]}
+      accessibilityRole="button"
+      accessibilityLabel="Sign out"
+    >
+      <Text style={{ fontSize: 16 }}>🚪</Text>
+      <Text style={[styles.mobileDrawerActionText, { color: colors.error }]}>
+        Sign out
+      </Text>
+    </Pressable>
+  );
+}

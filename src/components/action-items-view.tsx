@@ -182,6 +182,8 @@ export function ActionItemsView({
       keyExtractor={(item) => item.note._id}
       renderItem={renderTaskGroup}
       contentContainerStyle={styles.list}
+      contentInsetAdjustmentBehavior="automatic"
+      keyboardShouldPersistTaps="handled"
       onScroll={onScroll}
       scrollEventThrottle={16}
       ListHeaderComponent={
@@ -268,7 +270,7 @@ export function ActionItemsView({
 const styles = StyleSheet.create({
   list: {
     padding: spacing.md,
-    paddingBottom: 110,
+    paddingBottom: 140,
     gap: spacing.md,
     maxWidth: maxContentWidth,
     width: "100%",

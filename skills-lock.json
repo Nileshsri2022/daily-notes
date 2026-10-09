@@ -13,6 +13,12 @@
       "skillPath": "skills/design-mobile-apps/SKILL.md",
       "computedHash": "30bfa26c39e384af50d5ca2a9da7c39e239ce822f5e3fd2a31e8e6b55d3679ac"
     },
+    "expo-native-ui": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/expo/skills/expo-native-ui/SKILL.md",
+      "computedHash": "e8b0afc3f853e2248726ff77fc79d91e7d784f4f1db1cda89e0a41b389326591"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",

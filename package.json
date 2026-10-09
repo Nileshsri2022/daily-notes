@@ -1,7 +1,7 @@
 {
   "name": "dincharya",
   "main": "expo-router/entry",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "dependencies": {
     "@10play/tentap-editor": "^1.0.1",
     "@clerk/clerk-expo": "^2.20.1",

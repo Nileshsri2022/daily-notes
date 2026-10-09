@@ -93,6 +93,7 @@ export function ExpensesDashboard() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior="automatic"
       >
         <Accordion
           type="single"
@@ -257,7 +258,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.md,
-    paddingBottom: 120,
+    paddingBottom: 140,
     maxWidth: maxContentWidth,
     width: "100%",
     alignSelf: "center",
