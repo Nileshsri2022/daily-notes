@@ -326,115 +326,24 @@ export default function Feed() {
         </View>
       )}
 
-      {/* Floating Overlay Layer (Bottom Tab Bar & FAB) */}
-      <View style={styles.overlayLayer} pointerEvents="box-none">
-        {/* Mobile Bottom Navigation Bar */}
-        {isMobile ? (
-          <View
-            style={[
-              styles.bottomTabBar,
-              { paddingBottom: Math.max(bottomInset, 8) },
-            ]}
-          >
-            <Pressable
-              style={styles.bottomTabItem}
-              onPress={() => setMainTab("notes")}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: mainTab === "notes" }}
-              accessibilityLabel="Notes tab"
-            >
-              <View
-                style={[
-                  styles.bottomTabIconWrap,
-                  mainTab === "notes" && styles.bottomTabIconWrapActive,
-                ]}
-              >
-                <Text style={styles.bottomTabEmoji}>📝</Text>
-              </View>
-              <Text
-                style={[
-                  styles.bottomTabLabel,
-                  mainTab === "notes" && styles.bottomTabLabelActive,
-                ]}
-              >
-                Notes
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.bottomTabItem}
-              onPress={() => setMainTab("tasks")}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: mainTab === "tasks" }}
-              accessibilityLabel="Action Items tab"
-            >
-              <View
-                style={[
-                  styles.bottomTabIconWrap,
-                  mainTab === "tasks" && styles.bottomTabIconWrapActive,
-                ]}
-              >
-                <Text style={styles.bottomTabEmoji}>✅</Text>
-                {totalPendingCount > 0 ? (
-                  <View style={styles.bottomTabBadge}>
-                    <Text style={styles.bottomTabBadgeText}>
-                      {totalPendingCount > 99 ? "99+" : totalPendingCount}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text
-                style={[
-                  styles.bottomTabLabel,
-                  mainTab === "tasks" && styles.bottomTabLabelActive,
-                ]}
-              >
-                Tasks
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.bottomTabItem}
-              onPress={() => setMainTab("expenses")}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: mainTab === "expenses" }}
-              accessibilityLabel="Analytics tab"
-            >
-              <View
-                style={[
-                  styles.bottomTabIconWrap,
-                  mainTab === "expenses" && styles.bottomTabIconWrapActive,
-                ]}
-              >
-                <Text style={styles.bottomTabEmoji}>📊</Text>
-              </View>
-              <Text
-                style={[
-                  styles.bottomTabLabel,
-                  mainTab === "expenses" && styles.bottomTabLabelActive,
-                ]}
-              >
-                Analytics
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-
+      {/* Full-screen overlay layer for FAB and floating menu */}
+      <View pointerEvents="box-none" style={styles.overlayLayer}>
         {/* Menu Backdrop */}
         {menuOpen ? (
           <Pressable
             style={styles.backdrop}
             onPress={() => setMenuOpen(false)}
+            accessibilityLabel="Close menu backdrop"
           />
         ) : null}
 
-        {/* Floating Action Menu Options */}
+        {/* Action Menu Options */}
         {menuOpen ? (
           <View
             style={[
               styles.fabMenu,
-              isMobile && {
-                bottom: 144 + Math.max(bottomInset, 10),
+              {
+                bottom: 84 + bottomInset,
                 right: 20,
               },
             ]}
@@ -473,8 +382,8 @@ export default function Feed() {
         <Pressable
           style={({ pressed }) => [
             styles.fab,
-            isMobile && {
-              bottom: 76 + Math.max(bottomInset, 10),
+            {
+              bottom: 20 + bottomInset,
               right: 20,
             },
             menuOpen && styles.fabActive,
@@ -495,6 +404,7 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.canvas,
+    position: "relative",
   },
   container: {
     flex: 1,
@@ -586,17 +496,22 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     bottom: 24,
-    right: 24,
+    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "0 4px 14px rgba(0, 0, 0, 0.28)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
     elevation: 8,
     zIndex: 99,
-    ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+    ...(Platform.OS === "web"
+      ? ({ cursor: "pointer", boxShadow: "0 4px 14px rgba(0, 0, 0, 0.28)" } as any)
+      : {}),
   },
   fabActive: {
     backgroundColor: colors.ink,
@@ -624,7 +539,7 @@ const styles = StyleSheet.create({
   fabMenu: {
     position: "absolute",
     bottom: 92,
-    right: 24,
+    right: 20,
     gap: spacing.xs,
     alignItems: "flex-end",
     zIndex: 99,
@@ -638,10 +553,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.hairline,
-    boxShadow: "0 3px 10px rgba(0, 0, 0, 0.15)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
     elevation: 4,
     gap: spacing.xs,
-    ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+    ...(Platform.OS === "web"
+      ? ({ cursor: "pointer", boxShadow: "0 3px 10px rgba(0, 0, 0, 0.15)" } as any)
+      : {}),
   },
   fabMenuItemPressed: {
     backgroundColor: colors.surfaceSoft,
@@ -658,69 +578,6 @@ const styles = StyleSheet.create({
   listHeaderWrap: {
     gap: spacing.xs,
     marginBottom: spacing.xs,
-  },
-  bottomTabBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: colors.surfaceCard,
-    borderTopWidth: 1,
-    borderTopColor: colors.hairline,
-    paddingTop: 8,
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 25,
-    boxShadow: "0 -2px 10px rgba(0, 0, 0, 0.08)",
-    elevation: 4,
-  },
-  bottomTabItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 4,
-  },
-  bottomTabIconWrap: {
-    width: 36,
-    height: 28,
-    borderRadius: radius.pill,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  bottomTabIconWrapActive: {
-    backgroundColor: colors.surfaceSoft,
-  },
-  bottomTabEmoji: {
-    fontSize: 18,
-  },
-  bottomTabBadge: {
-    position: "absolute",
-    top: -2,
-    right: -4,
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    minWidth: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bottomTabBadgeText: {
-    color: colors.onPrimary,
-    fontSize: 9,
-    fontWeight: "700",
-  },
-  bottomTabLabel: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: colors.muted,
-    marginTop: 2,
-  },
-  bottomTabLabelActive: {
-    color: colors.primary,
-    fontWeight: "700",
   },
   mobileDrawerFooter: {
     gap: 8,
