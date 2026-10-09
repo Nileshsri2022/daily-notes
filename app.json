@@ -27,10 +27,7 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.RECORD_AUDIO"
-      ],
-      "gradleProperties": {
-        "reactNativeArchitectures": "arm64-v8a"
-      }
+      ]
     },
     "web": {
       "output": "single",
