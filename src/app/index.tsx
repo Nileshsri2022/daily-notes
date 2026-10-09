@@ -251,18 +251,6 @@ export default function Feed() {
             </Text>
           ) : (
             <View style={styles.mobileDrawerFooter}>
-              <Pressable
-                onPress={() => {
-                  setSidebarOpen(false);
-                  router.push("/trash");
-                }}
-                style={styles.mobileDrawerActionBtn}
-                accessibilityRole="button"
-                accessibilityLabel="Open Trash"
-              >
-                <Text style={{ fontSize: 16 }}>🗑️</Text>
-                <Text style={styles.mobileDrawerActionText}>Trash</Text>
-              </Pressable>
               <MobileDrawerSignOutButton onSignedOut={() => setSidebarOpen(false)} />
             </View>
           )}
@@ -332,72 +320,6 @@ export default function Feed() {
 
           {/* Tab 3: Expenses Dashboard */}
           {mainTab === "expenses" ? <ExpensesDashboard /> : null}
-
-          {/* Menu Backdrop */}
-          {menuOpen ? (
-            <Pressable
-              style={styles.backdrop}
-              onPress={() => setMenuOpen(false)}
-            />
-          ) : null}
-
-          {/* Floating Action Menu Options */}
-          {menuOpen ? (
-            <View
-              style={[
-                styles.fabMenu,
-                isMobile && {
-                  bottom: 120 + Math.max(insets.bottom, 10),
-                  right: 20,
-                },
-              ]}
-            >
-              <Pressable
-                style={({ pressed }) => [
-                  styles.fabMenuItem,
-                  pressed && styles.fabMenuItemPressed,
-                ]}
-                onPress={() => {
-                  setMenuOpen(false);
-                  router.push("/ai-note");
-                }}
-              >
-                <Text style={styles.fabMenuIcon}>✨</Text>
-                <Text style={styles.fabMenuText}>AI Voice Note</Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [
-                  styles.fabMenuItem,
-                  pressed && styles.fabMenuItemPressed,
-                ]}
-                onPress={() => {
-                  setMenuOpen(false);
-                  router.push("/editor");
-                }}
-              >
-                <Text style={styles.fabMenuIcon}>✍️</Text>
-                <Text style={styles.fabMenuText}>Manual Note</Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          {/* Floating Action Button */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.fab,
-              isMobile && {
-                bottom: 56 + Math.max(insets.bottom, 10),
-                right: 20,
-              },
-              menuOpen && styles.fabActive,
-              pressed && styles.fabPressed,
-            ]}
-            onPress={() => setMenuOpen(!menuOpen)}
-            accessibilityLabel={menuOpen ? "Close menu" : "Create note"}
-          >
-            <Text style={styles.fabIcon}>{menuOpen ? "✕" : "+"}</Text>
-          </Pressable>
 
           {/* Mobile Bottom Navigation Bar */}
           {isMobile ? (
@@ -490,6 +412,72 @@ export default function Feed() {
               </Pressable>
             </View>
           ) : null}
+
+          {/* Menu Backdrop */}
+          {menuOpen ? (
+            <Pressable
+              style={styles.backdrop}
+              onPress={() => setMenuOpen(false)}
+            />
+          ) : null}
+
+          {/* Floating Action Menu Options */}
+          {menuOpen ? (
+            <View
+              style={[
+                styles.fabMenu,
+                isMobile && {
+                  bottom: 144 + Math.max(insets.bottom, 10),
+                  right: 20,
+                },
+              ]}
+            >
+              <Pressable
+                style={({ pressed }) => [
+                  styles.fabMenuItem,
+                  pressed && styles.fabMenuItemPressed,
+                ]}
+                onPress={() => {
+                  setMenuOpen(false);
+                  router.push("/ai-note");
+                }}
+              >
+                <Text style={styles.fabMenuIcon}>✨</Text>
+                <Text style={styles.fabMenuText}>AI Voice Note</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.fabMenuItem,
+                  pressed && styles.fabMenuItemPressed,
+                ]}
+                onPress={() => {
+                  setMenuOpen(false);
+                  router.push("/editor");
+                }}
+              >
+                <Text style={styles.fabMenuIcon}>✍️</Text>
+                <Text style={styles.fabMenuText}>Manual Note</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {/* Floating Action Button */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.fab,
+              isMobile && {
+                bottom: 76 + Math.max(insets.bottom, 10),
+                right: 20,
+              },
+              menuOpen && styles.fabActive,
+              pressed && styles.fabPressed,
+            ]}
+            onPress={() => setMenuOpen(!menuOpen)}
+            accessibilityLabel={menuOpen ? "Close menu" : "Create note"}
+          >
+            <Text style={styles.fabIcon}>{menuOpen ? "✕" : "+"}</Text>
+          </Pressable>
         </View>
       )}
     </SafeAreaView>
@@ -593,8 +581,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 6,
-    zIndex: 30,
+    elevation: 20,
+    zIndex: 99,
     ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
   },
   fabActive: {
@@ -618,7 +606,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "rgba(24, 24, 27, 0.25)",
-    zIndex: 20,
+    zIndex: 50,
+    elevation: 15,
   },
   fabMenu: {
     position: "absolute",
@@ -626,7 +615,8 @@ const styles = StyleSheet.create({
     right: 24,
     gap: spacing.xs,
     alignItems: "flex-end",
-    zIndex: 25,
+    zIndex: 99,
+    elevation: 20,
   },
   fabMenuItem: {
     flexDirection: "row",
@@ -641,7 +631,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
-    elevation: 4,
+    elevation: 20,
     gap: spacing.xs,
     ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
   },

@@ -34,6 +34,7 @@ export function Badge({
     <BadgeContext.Provider value={currentVariant}>
       <View
         style={[
+          { alignSelf: "flex-start" },
           currentVariant === "default" && { backgroundColor: colors.primary },
           currentVariant === "outline" && {
             borderWidth: 1,

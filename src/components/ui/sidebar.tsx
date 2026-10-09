@@ -108,7 +108,13 @@ export function SidebarTrigger({
       )}
       {...props}
     >
-      {children ?? <Text style={styles.triggerEmoji}>📖</Text>}
+      {children ?? (
+        <View style={styles.hamburgerIcon}>
+          <View style={styles.hamburgerBar} />
+          <View style={styles.hamburgerBar} />
+          <View style={styles.hamburgerBar} />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -349,6 +355,16 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.95 }],
     backgroundColor: colors.surfaceSoft,
   },
+  hamburgerIcon: {
+    width: 18,
+    height: 12,
+    justifyContent: "space-between",
+  },
+  hamburgerBar: {
+    height: 2,
+    backgroundColor: colors.ink,
+    borderRadius: 1,
+  },
   triggerEmoji: {
     fontSize: 20,
     lineHeight: 24,
@@ -471,7 +487,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   menuButtonBadgeWrap: {
-    marginLeft: 6,
+    marginLeft: "auto",
+    alignSelf: "center",
   },
   sidebarFooter: {
     padding: spacing.md,
