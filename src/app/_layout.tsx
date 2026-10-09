@@ -166,8 +166,7 @@ function SetupRequired() {
   return (
     <View style={[styles.center, { backgroundColor: colors.canvas }]}>
       <Text style={[styles.message, { color: colors.muted }]}>
-        Setup required. Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env.local,
-        then run `npx convex dev` to create EXPO_PUBLIC_CONVEX_URL.
+        Setup required. Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY and EXPO_PUBLIC_CONVEX_URL in .env.
       </Text>
     </View>
   );

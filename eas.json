@@ -14,6 +14,11 @@
         "buildType": "apk"
       },
       "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://quick-pelican-969.ap-southeast-2.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://quick-pelican-969.ap-southeast-2.convex.site",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_aGVscGVkLWJlYWdsZS03NzU2LmNsZXJrLmFjY291bnRzLmRldiQ",
+        "EXPO_PUBLIC_APP_ENV": "dev",
+        "EXPO_PUBLIC_BYPASS_AUTH": "true",
         "REACT_NATIVE_ARCHITECTURES": "arm64-v8a"
       }
     },
@@ -22,6 +27,11 @@
         "buildType": "apk"
       },
       "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://quick-pelican-969.ap-southeast-2.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://quick-pelican-969.ap-southeast-2.convex.site",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_aGVscGVkLWJlYWdsZS03NzU2LmNsZXJrLmFjY291bnRzLmRldiQ",
+        "EXPO_PUBLIC_APP_ENV": "dev",
+        "EXPO_PUBLIC_BYPASS_AUTH": "true",
         "REACT_NATIVE_ARCHITECTURES": "arm64-v8a"
       }
     }
