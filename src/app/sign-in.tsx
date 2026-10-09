@@ -2,6 +2,7 @@ import { useAuth, useSignIn, useSignUp } from "@clerk/clerk-expo";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { themeVars } from "@/theme/theme-provider";
 import { colors, spacing, type } from "@/constants/theme";
 
-type ClerkError = { errors?: { longMessage?: string; message?: string }[] };
 
 export default function SignInScreen() {
   const { isSignedIn } = useAuth();
@@ -44,13 +44,40 @@ export default function SignInScreen() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (isSignedIn) router.replace("/");
+    if (isSignedIn) {
+      router.replace("/");
+    }
   }, [isSignedIn]);
 
   const submit = async () => {
-    if (!signInLoaded || !signUpLoaded || busy) return;
-    setBusy(true);
+    if (busy) return;
+
+    if (!signInLoaded || !signUpLoaded) {
+      setError("Connecting to authentication service... Please try again in a moment.");
+      return;
+    }
+
+    Keyboard.dismiss();
     setError("");
+
+    if (pendingVerification || secondFactor) {
+      if (!code.trim()) {
+        setError("Please enter the verification code.");
+        return;
+      }
+    } else {
+      if (!email.trim()) {
+        setError("Please enter your email.");
+        return;
+      }
+      if (!password) {
+        setError("Please enter your password.");
+        return;
+      }
+    }
+
+    setBusy(true);
+
     try {
       if (mode === "sign-in" && secondFactor) {
         const result = await signIn.attemptSecondFactor({
@@ -59,9 +86,10 @@ export default function SignInScreen() {
         });
         if (result.status === "complete") {
           await setSignInSession({ session: result.createdSessionId });
+          router.replace("/");
+          return;
         } else {
           setError(`Sign-in is not complete (status: ${result.status}).`);
-          setBusy(false);
         }
         return;
       }
@@ -73,6 +101,8 @@ export default function SignInScreen() {
         });
         if (result.status === "complete") {
           await setSignInSession({ session: result.createdSessionId });
+          router.replace("/");
+          return;
         } else if (result.status === "needs_second_factor") {
           const factors = (signIn.supportedSecondFactors ?? []) as {
             strategy: string;
@@ -91,17 +121,31 @@ export default function SignInScreen() {
             setError(
               "Two-step verification is required, but no supported method is available."
             );
-            setBusy(false);
             return;
           }
           if (strategy === "phone_code" || strategy === "email_code") {
             await signIn.prepareSecondFactor({ strategy });
           }
           setSecondFactor(strategy);
-          setBusy(false);
+          setCode("");
+        } else if (result.status === "needs_first_factor") {
+          const factors = (signIn.supportedFirstFactors ?? []) as {
+            strategy: string;
+            emailAddressId?: string;
+          }[];
+          const emailFactor = factors.find((f) => f.strategy === "email_code");
+          if (emailFactor?.emailAddressId) {
+            await signIn.prepareFirstFactor({
+              strategy: "email_code",
+              emailAddressId: emailFactor.emailAddressId,
+            });
+            setSecondFactor("email_code");
+            setCode("");
+          } else {
+            setError(`Additional verification required (status: ${result.status}).`);
+          }
         } else {
           setError(`Sign-in is not complete (status: ${result.status}).`);
-          setBusy(false);
         }
         return;
       }
@@ -112,25 +156,27 @@ export default function SignInScreen() {
           strategy: "email_code",
         });
         setPendingVerification(true);
-        setBusy(false);
+        setCode("");
       } else {
         const result = await signUp.attemptEmailAddressVerification({
           code: code.trim(),
         });
         if (result.status === "complete") {
           await setSignUpSession({ session: result.createdSessionId });
+          router.replace("/");
+          return;
         } else {
           setError(`Verification is not complete (status: ${result.status}).`);
-          setBusy(false);
         }
       }
-    } catch (err) {
-      const clerkErr = err as ClerkError;
-      setError(
-        clerkErr.errors?.[0]?.longMessage ??
-          clerkErr.errors?.[0]?.message ??
-          "Something went wrong. Please try again."
-      );
+    } catch (err: any) {
+      const message =
+        err?.errors?.[0]?.longMessage ||
+        err?.errors?.[0]?.message ||
+        err?.message ||
+        "Something went wrong. Please try again.";
+      setError(message);
+    } finally {
       setBusy(false);
     }
   };
@@ -140,6 +186,14 @@ export default function SignInScreen() {
     setError("");
     setPendingVerification(false);
     setSecondFactor(null);
+    setCode("");
+  };
+
+  const cancelVerification = () => {
+    setSecondFactor(null);
+    setPendingVerification(false);
+    setCode("");
+    setError("");
   };
 
   const buttonLabel = secondFactor
@@ -164,7 +218,10 @@ export default function SignInScreen() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={[type.displayLg, styles.title]}>Dincharya</Text>
           <Text style={[type.bodySm, styles.subtitle]}>
             {pendingVerification
@@ -225,26 +282,41 @@ export default function SignInScreen() {
           <View nativeID="clerk-captcha" />
 
           <Button
-            className="mb-6"
+            className="mb-4"
             onPress={submit}
-            disabled={busy}
+            disabled={busy || !signInLoaded || !signUpLoaded}
+            loading={busy}
             title={buttonLabel}
           />
 
-          <Pressable onPress={switchMode}>
-            <Text
-              style={{
-                textAlign: "center",
-                color: colors.primary,
-                fontSize: 14,
-                fontWeight: "500",
-              }}
-            >
-              {mode === "sign-in"
-                ? "New here? Create an account"
-                : "Already have an account? Sign in"}
-            </Text>
-          </Pressable>
+          {secondFactor || pendingVerification ? (
+            <Pressable onPress={cancelVerification} style={{ paddingVertical: 8 }}>
+              <Text
+                style={{
+                  textAlign: "center",
+                  color: colors.muted,
+                  fontSize: 13,
+                }}
+              >
+                ← Back to {mode === "sign-in" ? "sign in" : "sign up"}
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable onPress={switchMode} style={{ paddingVertical: 8 }}>
+              <Text
+                style={{
+                  textAlign: "center",
+                  color: colors.primary,
+                  fontSize: 14,
+                  fontWeight: "500",
+                }}
+              >
+                {mode === "sign-in"
+                  ? "New here? Create an account"
+                  : "Already have an account? Sign in"}
+              </Text>
+            </Pressable>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

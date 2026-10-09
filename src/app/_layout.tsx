@@ -6,7 +6,7 @@ import { ConvexReactClient } from "convex/react";
 import { ConvexProvider } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { verifyInstallation } from "nativewind";
 import { colors } from "@/constants/theme";
@@ -104,8 +104,16 @@ function DevProviders() {
 
 
 function RootNavigator() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
   const router = useRouter();
+
+  if (!isLoaded) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.canvas }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <SidebarProvider>

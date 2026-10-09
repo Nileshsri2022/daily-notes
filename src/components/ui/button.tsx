@@ -82,7 +82,13 @@ export function Button({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={currentVariant === "destructive" ? "#fff" : undefined} />
+        <ActivityIndicator
+          color={
+            currentVariant === "outline" || currentVariant === "ghost"
+              ? colors.primary
+              : "#fff"
+          }
+        />
       ) : title !== undefined ? (
         <ButtonText variant={currentVariant}>{title}</ButtonText>
       ) : (
