@@ -8,7 +8,11 @@
     "scheme": "dincharya",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Allow Dincharya to use speech recognition.",
+        "NSMicrophoneUsageDescription": "Allow Dincharya to use the microphone."
+      }
     },
     "android": {
       "package": "com.nilesh.dincharya",
@@ -19,7 +23,10 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "single",
@@ -54,6 +61,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "92644a74-f8f7-4a9f-9347-929b22ae01c8"
+      }
     }
   }
 }
