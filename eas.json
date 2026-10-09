@@ -12,11 +12,17 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "REACT_NATIVE_ARCHITECTURES": "arm64-v8a"
       }
     },
     "production": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "REACT_NATIVE_ARCHITECTURES": "arm64-v8a"
       }
     }
   }
