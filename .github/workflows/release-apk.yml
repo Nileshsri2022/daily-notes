@@ -46,7 +46,7 @@ jobs:
             echo "::error::EXPO_TOKEN secret is not set in GitHub repository secrets! Go to Repo Settings > Secrets and variables > Actions > New repository secret."
             exit 1
           fi
-          npx eas-cli build -p android --profile preview --non-interactive --wait --json > build.json
+          npx --yes eas-cli build -p android --profile preview --non-interactive --wait --json > build.json
           BUILD_URL=$(node -e "const b = JSON.parse(require('fs').readFileSync('build.json')); const item = Array.isArray(b) ? b[0] : b; if (!item.artifacts?.buildUrl) { console.error('No buildUrl found', item); process.exit(1); } console.log(item.artifacts.buildUrl);")
           echo "Downloading APK from $BUILD_URL..."
           curl -L -o dincharya.apk "$BUILD_URL"
@@ -63,6 +63,8 @@ jobs:
       - name: 📢 Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.tag_name.outputs.tag }}
           name: "Release ${{ steps.tag_name.outputs.tag }}"
