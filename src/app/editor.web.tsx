@@ -411,6 +411,13 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 16,
       lineHeight: 24,
       outlineWidth: 0,
+      ...(Platform.OS === "web"
+        ? ({
+            maxHeight: "calc(100vh - 340px)",
+            overflowY: "auto",
+            resize: "vertical",
+          } as any)
+        : {}),
     },
     micRow: {
       flexDirection: "row",

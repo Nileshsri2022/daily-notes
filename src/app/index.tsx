@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import {
@@ -48,30 +48,12 @@ function stripMarkup(body: string, format?: string): string {
 export default function Feed() {
   const router = useRouter();
   const notes = useQuery(api.notes.list);
-  const expenseSummary = useQuery(api.expenses.getSummary, {});
   const { setOpen: setSidebarOpen } = useSidebar();
-
-  const notesListRef = useRef<FlatList>(null);
-  const tasksListRef = useRef<FlatList>(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const [mainTab, setMainTab] = useState<"notes" | "tasks" | "expenses">("notes");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const handleScroll = (e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
-    setShowScrollTop(y > 120);
-  };
-
-  const handleScrollToTop = () => {
-    if (mainTab === "notes") {
-      notesListRef.current?.scrollToOffset({ offset: 0, animated: true });
-    } else if (mainTab === "tasks") {
-      tasksListRef.current?.scrollToOffset({ offset: 0, animated: true });
-    }
-  };
 
   const allTags = useMemo(
     () => (notes ? [...new Set(notes.flatMap((note) => note.tags ?? []))] : []),
@@ -231,20 +213,6 @@ export default function Feed() {
                   isActive={mainTab === "expenses"}
                   icon={<Text style={{ fontSize: 16 }}>📊</Text>}
                   title="Analytics"
-                  badge={
-                    expenseSummary && expenseSummary.totalThisMonth > 0 ? (
-                      <Badge
-                        variant={mainTab === "expenses" ? "default" : "outline"}
-                      >
-                        <BadgeText>
-                          {expenseSummary.currency && expenseSummary.currency !== "$"
-                            ? expenseSummary.currency
-                            : "₹"}
-                          {Math.round(expenseSummary.totalThisMonth)}
-                        </BadgeText>
-                      </Badge>
-                    ) : null
-                  }
                   onPress={() => {
                     setMainTab("expenses");
                     setSidebarOpen(false);
@@ -294,13 +262,10 @@ export default function Feed() {
           {/* Tab 1: Notes List */}
           {mainTab === "notes" ? (
             <FlatList
-              ref={notesListRef}
               data={visibleNotes}
               keyExtractor={(item) => item._id}
               renderItem={renderNoteItem}
               contentContainerStyle={styles.list}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
               ListHeaderComponent={
                 <View style={styles.listHeaderWrap}>
                   <Input
@@ -334,11 +299,7 @@ export default function Feed() {
 
           {/* Tab 2: Action Items List */}
           {mainTab === "tasks" ? (
-            <ActionItemsView
-              notes={notes}
-              listRef={tasksListRef}
-              onScroll={handleScroll}
-            />
+            <ActionItemsView notes={notes} />
           ) : null}
 
           {/* Tab 3: Expenses Dashboard */}
@@ -384,18 +345,6 @@ export default function Feed() {
               </Pressable>
             </View>
           ) : null}
-
-          {/* Scroll to Top Upward Arrow Button */}
-          {showScrollTop && (
-            <Pressable
-              style={styles.scrollToTopBtn}
-              onPress={handleScrollToTop}
-              accessibilityRole="button"
-              accessibilityLabel="Scroll to top"
-            >
-              <Text style={styles.scrollToTopText}>↑</Text>
-            </Pressable>
-          )}
 
           {/* Floating Action Button */}
           <Pressable
@@ -579,33 +528,5 @@ const styles = StyleSheet.create({
   listHeaderWrap: {
     gap: spacing.xs,
     marginBottom: spacing.xs,
-  },
-  scrollToTopBtn: {
-    position: "absolute",
-    right: 24,
-    bottom: 92,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 5,
-    zIndex: 29,
-    ...(Platform.OS === "web"
-      ? ({ cursor: "pointer", userSelect: "none" } as any)
-      : {}),
-  },
-  scrollToTopText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.primary,
-    lineHeight: 20,
   },
 });
