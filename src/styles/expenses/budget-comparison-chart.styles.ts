@@ -18,28 +18,69 @@ export const styles = StyleSheet.create({
     lineHeight: 16,
   },
   chartWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: spacing.sm,
+    padding: spacing.sm,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.hairline,
   },
-  barTopLabel: {
+  plotArea: {
+    position: "relative",
+  },
+  gridLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: colors.hairlineSoft,
+  },
+  gridLabel: {
+    fontSize: 9,
+    color: colors.mutedSoft,
+    marginTop: -15,
+    marginLeft: 2,
+  },
+  gridLabelBelow: {
+    marginTop: 3,
+  },
+  barsRow: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "flex-end",
+  },
+  barCol: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  barValueLabel: {
     fontSize: 10,
     fontWeight: "700",
     color: colors.ink,
     marginBottom: 4,
   },
-  barTopLabelOver: {
-    color: "#EF4444",
+  barValueLabelOver: {
+    color: colors.error,
   },
-  yAxisText: {
-    color: colors.muted,
-    fontSize: 10,
+  bar: {
+    borderRadius: 6,
   },
-  xAxisLabelText: {
+  barSelected: {
+    borderWidth: 2,
+    borderColor: colors.ink,
+  },
+  xLabelsRow: {
+    flexDirection: "row",
+    marginTop: 6,
+  },
+  xLabel: {
+    flex: 1,
+    textAlign: "center",
     color: colors.ink,
     fontSize: 11,
     fontWeight: "600",
@@ -66,13 +107,13 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   legendDotHistorical: {
-    backgroundColor: "#F59E0B",
+    backgroundColor: colors.accentAmber,
   },
   legendDotSafe: {
-    backgroundColor: "#10B981",
+    backgroundColor: colors.success,
   },
   legendDotDanger: {
-    backgroundColor: "#EF4444",
+    backgroundColor: colors.error,
   },
   legendText: {
     fontSize: 11,

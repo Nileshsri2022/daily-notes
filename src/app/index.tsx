@@ -304,7 +304,8 @@ export default function Feed() {
         {notes === undefined &&
         mainTab !== "calendar" &&
         mainTab !== "habits" &&
-        mainTab !== "review" ? (
+        mainTab !== "review" &&
+        mainTab !== "expenses" ? (
           <View style={styles.controlsWrap}>
             <Skeleton
               style={{ height: 42, borderRadius: radius.md, marginBottom: spacing.md }}

@@ -1,5 +1,5 @@
-import { Text, View } from "react-native";
-import { BarChart } from "react-native-gifted-charts";
+import { useState } from "react";
+import { Pressable, Text, View } from "react-native";
 import { colors } from "@/constants/theme";
 import { styles } from "@/styles/expenses/budget-comparison-chart.styles";
 import { useBreakpoints } from "@/hooks/use-breakpoints";
@@ -11,6 +11,20 @@ export interface BudgetComparisonChartProps {
   currencySymbol: string;
 }
 
+interface Bar {
+  key: string;
+  label: string;
+  legend: string;
+  value: number;
+  color: string;
+  over?: boolean;
+}
+
+/**
+ * Plain-View bar chart (no chart library): three bars — target budget,
+ * historical average, current spend — with heights proportional to value.
+ * Tapping a bar highlights it. Same pattern as the Review tab mood graph.
+ */
 export function BudgetComparisonChart({
   targetBudget,
   historicalAvgSpent,
@@ -22,38 +36,32 @@ export function BudgetComparisonChart({
   // Roomier chart on wide screens.
   const chartHeight = isDesktop ? 200 : 160;
   const barWidth = isDesktop ? 56 : 44;
+  const [selected, setSelected] = useState<string | null>(null);
 
-  const barData = [
+  const historicalValue =
+    historicalAvgSpent > 0 ? historicalAvgSpent : targetBudget;
+  const bars: Bar[] = [
     {
-      value: targetBudget,
+      key: "target",
       label: "Target",
-      frontColor: colors.primary,
-      topLabelComponent: () => (
-        <Text style={styles.barTopLabel}>
-          {currencySymbol}{targetBudget.toFixed(0)}
-        </Text>
-      ),
+      legend: "Target Budget",
+      value: targetBudget,
+      color: colors.primary,
     },
     {
-      value: historicalAvgSpent > 0 ? historicalAvgSpent : targetBudget,
+      key: "historical",
       label: historicalAvgSpent > 0 ? "Past Avg" : "Baseline",
-      frontColor: "#F59E0B", // Amber
-      topLabelComponent: () => (
-        <Text style={styles.barTopLabel}>
-          {currencySymbol}
-          {(historicalAvgSpent > 0 ? historicalAvgSpent : targetBudget).toFixed(0)}
-        </Text>
-      ),
+      legend: "Historical Avg",
+      value: historicalValue,
+      color: colors.accentAmber,
     },
     {
-      value: currentSpent,
+      key: "current",
       label: "Current",
-      frontColor: isOverBudget ? "#EF4444" : "#10B981", // Red if over, Emerald if under
-      topLabelComponent: () => (
-        <Text style={[styles.barTopLabel, isOverBudget && styles.barTopLabelOver]}>
-          {currencySymbol}{currentSpent.toFixed(0)}
-        </Text>
-      ),
+      legend: "Current Cycle",
+      value: currentSpent,
+      color: isOverBudget ? colors.error : colors.success,
+      over: isOverBudget,
     },
   ];
 
@@ -61,8 +69,10 @@ export function BudgetComparisonChart({
     targetBudget,
     historicalAvgSpent,
     currentSpent,
-    100
+    100,
   );
+  const axisMax = maxValue * 1.15; // headroom for value labels
+  const fmt = (v: number) => `${currencySymbol}${v.toFixed(0)}`;
 
   return (
     <View style={styles.container}>
@@ -72,23 +82,61 @@ export function BudgetComparisonChart({
       </Text>
 
       <View style={styles.chartWrapper}>
-        <BarChart
-          data={barData}
-          barWidth={barWidth}
-          spacing={28}
-          roundedTop
-          roundedBottom={false}
-          hideRules
-          xAxisThickness={1}
-          yAxisThickness={0}
-          xAxisColor={colors.hairline}
-          yAxisTextStyle={styles.yAxisText}
-          xAxisLabelTextStyle={styles.xAxisLabelText}
-          maxValue={maxValue * 1.25}
-          noOfSections={3}
-          height={chartHeight}
-          isAnimated
-        />
+        <View style={[styles.plotArea, { height: chartHeight }]}>
+          {/* faint gridlines */}
+          {[0, 1, 2, 3].map((i) => {
+            const v = (axisMax / 3) * i;
+            return (
+              <View key={i} style={[styles.gridLine, { bottom: (v / axisMax) * chartHeight }]}>
+                <Text style={[styles.gridLabel, i === 0 && styles.gridLabelBelow]}>
+                  {fmt(v)}
+                </Text>
+              </View>
+            );
+          })}
+          <View style={[styles.barsRow, { height: chartHeight }]}>
+            {bars.map((bar) => {
+              const h = Math.max(6, (bar.value / axisMax) * chartHeight);
+              const isSelected = selected === bar.key;
+              return (
+                <Pressable
+                  key={bar.key}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${bar.legend}: ${fmt(bar.value)}`}
+                  onPress={() => setSelected(isSelected ? null : bar.key)}
+                  style={styles.barCol}
+                >
+                  <Text
+                    style={[
+                      styles.barValueLabel,
+                      bar.over && styles.barValueLabelOver,
+                    ]}
+                  >
+                    {fmt(bar.value)}
+                  </Text>
+                  <View
+                    style={[
+                      styles.bar,
+                      {
+                        width: barWidth,
+                        height: h,
+                        backgroundColor: bar.color,
+                      },
+                      isSelected && styles.barSelected,
+                    ]}
+                  />
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+        <View style={styles.xLabelsRow}>
+          {bars.map((bar) => (
+            <Text key={bar.key} style={styles.xLabel}>
+              {bar.label}
+            </Text>
+          ))}
+        </View>
       </View>
 
       {/* Legend */}
