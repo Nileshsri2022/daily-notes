@@ -29,6 +29,15 @@ jobs:
           node-version: 22
           cache: 'npm'
 
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 🤖 Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: 📦 Install Dependencies
         run: npm ci
 
@@ -38,18 +47,17 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: 🔨 Build & Download APK via EAS
+      - name: 🔨 Build APK via EAS Local
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_BUILD_NO_EXPO_GO_WARNING: "true"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false"
         run: |
           if [ -z "$EXPO_TOKEN" ]; then
             echo "::error::EXPO_TOKEN secret is not set in GitHub repository secrets! Go to Repo Settings > Secrets and variables > Actions > New repository secret."
             exit 1
           fi
-          npx --yes eas-cli build -p android --profile production --non-interactive --wait --json > build.json
-          BUILD_URL=$(node -e "const b = JSON.parse(require('fs').readFileSync('build.json')); const item = Array.isArray(b) ? b[0] : b; if (!item.artifacts?.buildUrl) { console.error('No buildUrl found', item); process.exit(1); } console.log(item.artifacts.buildUrl);")
-          echo "Downloading APK from $BUILD_URL..."
-          curl -L -o dincharya.apk "$BUILD_URL"
+          npx --yes eas-cli build -p android --profile production --local --output=dincharya.apk --non-interactive
 
       - name: 🏷️ Determine Release Tag
         id: tag_name
