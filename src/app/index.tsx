@@ -13,6 +13,7 @@ import { NoteCover } from "@/components/note-cover";
 import { ActionItemsView } from "@/components/action-items-view";
 import { CalendarView } from "@/components/calendar-view";
 import { HabitsView } from "@/components/habits-view";
+import { MoodCheckin } from "@/components/mood-checkin";
 import { ReviewView } from "@/components/review-view";
 import { ExpensesDashboard } from "@/components/expenses-dashboard";
 import { TagMultiSelect } from "@/components/tag-multi-select";
@@ -47,6 +48,12 @@ function stripMarkup(body: string, format?: string): string {
 export default function Feed() {
   const router = useRouter();
   const notes = useQuery(api.notes.list);
+  // Mood dots for the calendar: ~3 months back covers the visible grid.
+  const moodRange = useMemo(() => {
+    const now = Date.now();
+    return { startDate: now - 93 * 86400000, endDate: now + 86400000 };
+  }, []);
+  const moods = useQuery(api.moods.getRange, moodRange);
   const { setOpen: setSidebarOpen } = useSidebar();
   const insets = useSafeAreaInsets();
   const { isDesktop } = useBreakpoints();
@@ -333,6 +340,7 @@ export default function Feed() {
                 keyboardShouldPersistTaps="handled"
                 ListHeaderComponent={
                   <View style={styles.listHeaderWrap}>
+                    <MoodCheckin />
                     <Input
                       placeholder="Search notes…"
                       value={query}
@@ -371,7 +379,9 @@ export default function Feed() {
             {mainTab === "expenses" ? <ExpensesDashboard /> : null}
 
             {/* Tab 4: Calendar View */}
-            {mainTab === "calendar" ? <CalendarView notes={notes} /> : null}
+            {mainTab === "calendar" ? (
+              <CalendarView notes={notes} moods={moods} />
+            ) : null}
 
             {mainTab === "habits" ? <HabitsView /> : null}
 

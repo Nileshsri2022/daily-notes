@@ -1,14 +1,6 @@
 import { StyleSheet } from "react-native";
 import { colors, maxContentWidth, radius, spacing, type } from "@/constants/theme";
 
-export const MOOD_COLORS = [
-  "#A63D2F", // 1 — heavy
-  "#C46A3D", // 2 — low
-  "#D99C34", // 3 — quiet/steady
-  "#7C9A5C", // 4 — good
-  "#3E6B4F", // 5 — glowing
-] as const;
-
 export const styles = StyleSheet.create({
   container: {
     flex: 1,

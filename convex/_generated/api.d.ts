@@ -14,6 +14,7 @@ import type * as email from "../email.js";
 import type * as expenses from "../expenses.js";
 import type * as habits from "../habits.js";
 import type * as helpers from "../helpers.js";
+import type * as moods from "../moods.js";
 import type * as notes from "../notes.js";
 import type * as review from "../review.js";
 import type * as trash from "../trash.js";
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   expenses: typeof expenses;
   habits: typeof habits;
   helpers: typeof helpers;
+  moods: typeof moods;
   notes: typeof notes;
   review: typeof review;
   trash: typeof trash;

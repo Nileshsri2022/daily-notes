@@ -129,9 +129,10 @@ export const styles = StyleSheet.create({
   },
   dotsRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 3,
     marginTop: 3,
-    height: 5,
+    height: 8,
   },
   dot: {
     width: 5,
@@ -141,6 +142,12 @@ export const styles = StyleSheet.create({
   },
   dotSelected: {
     backgroundColor: colors.onPrimary,
+  },
+  moodDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginLeft: 2,
   },
   dotPlaceholder: {
     width: 5,

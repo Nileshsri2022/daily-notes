@@ -16,11 +16,13 @@ import {
   weekRange,
   type CategoryTotal,
   type DigestAi,
+  type LoggedMoodInput,
   type WeekNoteInput,
   type WeekStatsInput,
 } from "../src/lib/review";
 import { currentStreak } from "../src/lib/habits";
 import { dayKey } from "../src/lib/calendar";
+import { moodLabel } from "../src/lib/moods";
 
 const categoryTotal = v.object({ category: v.string(), amount: v.number() });
 
@@ -133,6 +135,21 @@ export const getWeekData = internalQuery({
       updatedAt: n.updatedAt,
     }));
 
+    const moodLogs = await ctx.db
+      .query("moodLogs")
+      .withIndex("by_user_date", (q) =>
+        q
+          .eq("clerkUserId", userId)
+          .gte("date", dayKey(start))
+          .lte("date", dayKey(end)),
+      )
+      .collect();
+    const loggedMoods: LoggedMoodInput[] = moodLogs.map((m) => ({
+      date: m.date,
+      score: m.score,
+      label: moodLabel(m.score),
+    }));
+
     const stats: WeekStatsInput = {
       notesWritten: notes.length,
       tasksDone: taskStats.done,
@@ -145,7 +162,7 @@ export const getWeekData = internalQuery({
       activeStreaks,
     };
 
-    return { notes: weekNotes, stats };
+    return { notes: weekNotes, stats, loggedMoods };
   },
 });
 
@@ -211,11 +228,14 @@ export const generateDigest = action({
     const userId = identity?.subject ?? "dev_user";
 
     const label = weekLabel(weekKey); // throws on malformed key
-    const data: { notes: WeekNoteInput[]; stats: WeekStatsInput } =
-      await ctx.runQuery(internal.review.getWeekData, {
-        userId,
-        weekKey,
-      });
+    const data: {
+      notes: WeekNoteInput[];
+      stats: WeekStatsInput;
+      loggedMoods: LoggedMoodInput[];
+    } = await ctx.runQuery(internal.review.getWeekData, {
+      userId,
+      weekKey,
+    });
 
     const isEmpty =
       data.notes.length === 0 &&
@@ -237,7 +257,12 @@ export const generateDigest = action({
       );
     }
 
-    const { system, user } = buildDigestPrompt(data.notes, data.stats, label);
+    const { system, user } = buildDigestPrompt(
+      data.notes,
+      data.stats,
+      label,
+      data.loggedMoods,
+    );
     const res = await fetch(`${finalBaseUrl.replace(/\/+$/, "")}/chat/completions`, {
       method: "POST",
       headers: {

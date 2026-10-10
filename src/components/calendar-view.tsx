@@ -13,6 +13,7 @@ import {
   monthLabel,
   timeLabel,
 } from "@/lib/calendar";
+import { moodColor } from "@/lib/moods";
 
 const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -24,8 +25,10 @@ function dotsFor(count: number): number {
 
 export function CalendarView({
   notes,
+  moods,
 }: {
   notes: Doc<"notes">[] | undefined;
+  moods?: { date: string; score: number }[];
 }) {
   const router = useRouter();
   const { isDesktop } = useBreakpoints();
@@ -36,6 +39,10 @@ export function CalendarView({
 
   const grid = useMemo(() => getMonthGrid(year, month), [year, month]);
   const byDay = useMemo(() => groupNotesByDay(notes ?? []), [notes]);
+  const moodByDay = useMemo(
+    () => new Map((moods ?? []).map((m) => [m.date, m.score])),
+    [moods],
+  );
 
   const selectedDate = useMemo(() => {
     const [y, m, d] = selectedKey.split("-").map(Number);
@@ -104,6 +111,7 @@ export function CalendarView({
       <View style={styles.grid}>
         {grid.map((cell) => {
           const count = byDay.get(cell.key)?.length ?? 0;
+          const moodScore = moodByDay.get(cell.key);
           const isSelected = cell.key === selectedKey;
           return (
             <Pressable
@@ -137,6 +145,14 @@ export function CalendarView({
                       />
                     ))
                   : null}
+                {moodScore !== undefined ? (
+                  <View
+                    style={[
+                      styles.moodDot,
+                      { backgroundColor: moodColor(moodScore) },
+                    ]}
+                  />
+                ) : null}
               </View>
             </Pressable>
           );

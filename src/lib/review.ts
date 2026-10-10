@@ -124,6 +124,12 @@ export interface MoodDay {
   label: string;
 }
 
+export interface LoggedMoodInput {
+  date: string;
+  score: number;
+  label: string;
+}
+
 export interface DigestAi {
   summary: string;
   moodByDay: MoodDay[];
@@ -163,6 +169,7 @@ export function buildDigestPrompt(
   notes: WeekNoteInput[],
   stats: WeekStatsInput,
   label: string,
+  loggedMoods: LoggedMoodInput[] = [],
 ): { system: string; user: string } {
   const system = `You are a thoughtful weekly-review companion inside a personal diary app called Dincharya.
 You read one week of someone's diary notes and write a short, warm review of their week.
@@ -184,7 +191,8 @@ Rules:
 - Days with no notes: score 3, label "quiet" — unless surrounding days give real signal.
 - Never invent events, people, or feelings not supported by the notes.
 - Labels are single lowercase words: steady, drained, glowing, restless, tender, electric, heavy, light.
-- The summary should feel like it was written by someone who actually read the diary. Reference specifics.`;
+- The summary should feel like it was written by someone who actually read the diary. Reference specifics.
+- If logged moods are provided below, use their exact scores and labels for those dates in moodByDay — they are ground truth, not to be second-guessed.`;
 
   const trimmed = notes.slice(0, MAX_NOTES).map((n) => {
     const d = new Date(n.updatedAt);
@@ -212,8 +220,14 @@ Rules:
           .map((t) => `- ${t}`)
           .join("\n")}`
       : "";
+  const moodLine =
+    loggedMoods.length > 0
+      ? `\nLogged moods (ground truth — use these exact scores/labels):\n${loggedMoods
+          .map((m) => `${m.date}: ${m.score} (${m.label})`)
+          .join("\n")}`
+      : "";
 
-  const user = `Week: ${label}\nStats: ${statsLine}${pendingLine}\n\nNotes:\n${
+  const user = `Week: ${label}\nStats: ${statsLine}${pendingLine}${moodLine}\n\nNotes:\n${
     trimmed.length > 0 ? trimmed.join("\n\n") : "(no notes this week)"
   }`;
 

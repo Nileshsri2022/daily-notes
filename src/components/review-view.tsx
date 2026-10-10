@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useAction, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -7,10 +7,12 @@ import {
   weekDayKeys,
   weekKeyFor,
   weekLabel,
+  weekRange,
 } from "@/lib/review";
 import { weekdayLetter } from "@/lib/habits";
 import { dayKey } from "@/lib/calendar";
-import { MOOD_COLORS, styles } from "@/styles/review.styles";
+import { MOOD_COLORS, mergeMoods } from "@/lib/moods";
+import { styles } from "@/styles/review.styles";
 
 interface DigestDoc {
   weekKey: string;
@@ -48,7 +50,18 @@ function money(currency: string, amount: number): string {
 function MoodTrend({ digest }: { digest: DigestDoc }) {
   const todayKey = dayKey(new Date());
   const dates = weekDayKeys(digest.weekKey);
-  const byDate = new Map(digest.ai.moodByDay.map((m) => [m.date, m]));
+  // Real logged moods win over AI inference for the same day.
+  const rangeArgs = useMemo(() => {
+    const { start, end } = weekRange(digest.weekKey);
+    return { startDate: start.getTime(), endDate: end.getTime() };
+  }, [digest.weekKey]);
+  const logged = useQuery(api.moods.getRange, rangeArgs);
+  const merged = mergeMoods(
+    digest.ai.moodByDay,
+    (logged ?? []).map((l) => ({ date: l.date, score: l.score })),
+    dates,
+  );
+  const byDate = new Map(merged.map((m) => [m.date, m]));
   const [selected, setSelected] = useState<string>(
     dates.includes(todayKey) ? todayKey : dates[0],
   );
@@ -98,7 +111,7 @@ function MoodTrend({ digest }: { digest: DigestDoc }) {
               Number(selected.slice(0, 4)),
               Number(selected.slice(5, 7)) - 1,
               Number(selected.slice(8, 10)),
-            ).toLocaleDateString(undefined, { weekday: "long" })} — ${selectedMood.label}`
+            ).toLocaleDateString(undefined, { weekday: "long" })} — ${selectedMood.label}${selectedMood.logged ? " · logged" : ""}`
           : " "}
       </Text>
     </View>

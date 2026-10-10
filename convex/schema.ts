@@ -42,6 +42,12 @@ export default defineSchema({
     }),
   }).index("by_user_week", ["clerkUserId", "weekKey"]),
 
+  moodLogs: defineTable({
+    clerkUserId: v.string(),
+    date: v.string(), // local "YYYY-MM-DD", one row per day
+    score: v.number(), // 1–5
+  }).index("by_user_date", ["clerkUserId", "date"]),
+
   habits: defineTable({
     clerkUserId: v.string(),
     name: v.string(),
