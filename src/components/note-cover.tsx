@@ -1,10 +1,9 @@
 import { useQuery } from "convex/react";
-import { Image, StyleSheet } from "react-native";
+import { Image } from "react-native";
 
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-
-import { radius } from "@/constants/theme";
+import { styles } from "@/styles/note-cover.styles";
 
 export function NoteCover({
   storageId,
@@ -25,8 +24,3 @@ export function NoteCover({
     />
   );
 }
-
-const styles = StyleSheet.create({
-  image: { width: "100%" },
-  rounded: { borderRadius: radius.lg },
-});

@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -22,14 +21,8 @@ import { NoteCover } from "@/components/note-cover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
-import {
-  colors,
-  maxContentWidth,
-  radius,
-  spacing,
-  type,
-  type ThemeColors,
-} from "@/constants/theme";
+import { colors, spacing, type } from "@/constants/theme";
+import { styles } from "@/styles/editor.web.styles";
 
 function escapeHtml(text: string): string {
   return text
@@ -68,7 +61,6 @@ function plainTextToHtml(text: string): string {
 }
 
 export default function WebEditor() {
-  const styles = createStyles(colors);
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -128,7 +120,6 @@ function WebEditorForm({
   initialTags: string[];
 }) {
   const router = useRouter();
-  const styles = createStyles(colors);
   const createNote = useMutation(api.notes.create);
   const updateNote = useMutation(api.notes.update);
   const generateUploadUrl = useMutation(api.notes.generateCoverUploadUrl);
@@ -379,83 +370,3 @@ function WebEditorForm({
     </SafeAreaView>
   );
 }
-
-const createStyles = (colors: ThemeColors) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.canvas },
-    flex: { flex: 1 },
-    scrollContent: { flexGrow: 1, paddingVertical: spacing.sm },
-    container: {
-      flex: 1,
-      paddingHorizontal: spacing.md,
-      maxWidth: maxContentWidth,
-      width: "100%",
-      alignSelf: "center",
-    },
-    message: { textAlign: "center", marginTop: spacing.xxl, color: colors.muted },
-    titleInput: {
-      color: colors.ink,
-      paddingVertical: spacing.xs,
-      marginBottom: spacing.xs,
-      outlineWidth: 0,
-    },
-    bodyInput: {
-      minHeight: 280,
-      color: colors.ink,
-      backgroundColor: colors.surfaceCard,
-      borderRadius: radius.md,
-      padding: spacing.md,
-      borderWidth: 1,
-      borderColor: colors.hairline,
-      marginBottom: spacing.xs,
-      fontSize: 16,
-      lineHeight: 24,
-      outlineWidth: 0,
-      ...(Platform.OS === "web"
-        ? ({
-            maxHeight: "calc(100vh - 340px)",
-            overflowY: "auto",
-            resize: "vertical",
-          } as any)
-        : {}),
-    },
-    micRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.sm,
-      marginTop: spacing.xs,
-      marginBottom: spacing.xs,
-    },
-    micButton: {
-      width: 44,
-      height: 44,
-      borderRadius: radius.pill,
-      borderWidth: 1,
-      borderColor: colors.hairline,
-      backgroundColor: colors.canvas,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    micButtonActive: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    micPressed: { backgroundColor: colors.surfaceCard },
-    micIcon: { fontSize: 18 },
-    listeningText: { color: colors.primary, flex: 1 },
-    micHint: { color: colors.mutedSoft, flex: 1 },
-    coverWrap: { marginBottom: spacing.sm },
-    coverPreview: { width: "100%", height: 180, borderRadius: radius.lg },
-    coverRemove: {
-      position: "absolute",
-      top: spacing.xs,
-      right: spacing.xs,
-      width: 28,
-      height: 28,
-      borderRadius: radius.pill,
-      backgroundColor: colors.surfaceDark,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    coverRemoveText: { color: colors.onDark, fontSize: 13 },
-  });

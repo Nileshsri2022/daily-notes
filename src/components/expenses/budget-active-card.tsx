@@ -1,7 +1,8 @@
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { colors, radius, spacing, type } from "@/constants/theme";
+import { type } from "@/constants/theme";
+import { styles } from "@/styles/expenses/budget-active-card.styles";
 
 export interface BudgetActiveCardProps {
   hasBudget: boolean;
@@ -43,7 +44,7 @@ export function BudgetActiveCard({
         <Button
           title="🎯 Set Budget Target"
           onPress={onOpenSettings}
-          style={{ marginTop: spacing.md }}
+          style={styles.emptyButton}
         />
       </View>
     );
@@ -117,13 +118,13 @@ export function BudgetActiveCard({
             { backgroundColor: barColor },
           ]}
         >
-          <BadgeText style={{ fontSize: 11, fontWeight: "700" }}>
+          <BadgeText style={styles.badgeText}>
             {percentage}% consumed
           </BadgeText>
         </Badge>
         <Text style={styles.remainingText}>
           {isOverBudget ? (
-            <Text style={{ color: "#EF4444", fontWeight: "700" }}>
+            <Text style={styles.overLimitText}>
               +{currencySymbol}{(currentSpent - budgetAmount).toFixed(2)} over limit
             </Text>
           ) : (
@@ -143,7 +144,7 @@ export function BudgetActiveCard({
         <View style={styles.pacingDivider} />
         <View style={styles.pacingItem}>
           <Text style={styles.pacingLabel}>Safe Daily Spend</Text>
-          <Text style={[styles.pacingValue, { color: isOverBudget ? "#EF4444" : "#10B981" }]}>
+          <Text style={[styles.pacingValue, isOverBudget ? styles.pacingDanger : styles.pacingSafe]}>
             {currencySymbol}{safeDailySpend.toFixed(0)} / day
           </Text>
         </View>
@@ -151,145 +152,3 @@ export function BudgetActiveCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: spacing.sm,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  sectionHeading: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  cycleSub: {
-    fontSize: 12,
-    color: colors.ink,
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  editBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surfaceSoft,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    ...(Platform.OS === "web" ? ({ cursor: "pointer" } as any) : {}),
-  },
-  editBtnText: {
-    fontSize: 11,
-    color: colors.ink,
-    fontWeight: "600",
-  },
-  numbersRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 4,
-  },
-  numberCol: {
-    gap: 2,
-  },
-  numberLabel: {
-    fontSize: 11,
-    color: colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  spentNumber: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: colors.ink,
-  },
-  targetNumber: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.muted,
-  },
-  progressBarTrack: {
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.surfaceSoft,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.hairline,
-  },
-  progressBarFill: {
-    height: "100%",
-    borderRadius: 5,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  percentageBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-  },
-  remainingText: {
-    fontSize: 12,
-    color: colors.muted,
-    fontWeight: "500",
-  },
-  pacingBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    paddingVertical: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  pacingItem: {
-    alignItems: "center",
-    flex: 1,
-    gap: 2,
-  },
-  pacingDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: colors.hairline,
-  },
-  pacingLabel: {
-    fontSize: 11,
-    color: colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  pacingValue: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.ink,
-  },
-  emptyCard: {
-    alignItems: "center",
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-  },
-  emptyIcon: {
-    fontSize: 36,
-    marginBottom: spacing.xs,
-  },
-  emptyTitle: {
-    color: colors.ink,
-    textAlign: "center",
-    marginBottom: spacing.xxs,
-  },
-  emptySub: {
-    fontSize: 13,
-    color: colors.muted,
-    textAlign: "center",
-    lineHeight: 18,
-    maxWidth: 360,
-  },
-});

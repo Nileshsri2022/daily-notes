@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -16,7 +15,7 @@ import {
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { colors, maxContentWidth, radius, spacing } from "@/constants/theme";
+import { styles } from "@/styles/expenses.styles";
 import { RangePicker } from "./expenses/range-picker";
 import { CategoryDonutChart } from "./expenses/category-donut-chart";
 import { TransactionList } from "./expenses/transaction-list";
@@ -68,9 +67,9 @@ export function ExpensesDashboard() {
   if (summary === undefined || rawExpenses === undefined || budgetStatus === undefined) {
     return (
       <View style={styles.loadingWrap}>
-        <Skeleton style={{ height: 260, borderRadius: radius.lg, marginBottom: spacing.md }} />
-        <Skeleton style={{ height: 100, borderRadius: radius.md, marginBottom: spacing.md }} />
-        <Skeleton style={{ height: 80, borderRadius: radius.md }} />
+        <Skeleton style={styles.skeletonLg} />
+        <Skeleton style={styles.skeletonMd} />
+        <Skeleton style={styles.skeletonSm} />
       </View>
     );
   }
@@ -112,7 +111,7 @@ export function ExpensesDashboard() {
                   </Text>
                 </View>
                 <Badge variant="default" style={styles.accordionHeaderBadge}>
-                  <BadgeText style={{ fontSize: 13, fontWeight: "700" }}>
+                  <BadgeText style={styles.badgeTextBold}>
                     {currencySymbol}
                     {summary.totalThisMonth.toFixed(2)}
                   </BadgeText>
@@ -173,17 +172,17 @@ export function ExpensesDashboard() {
                     variant={budgetStatus.percentage >= 80 ? "default" : "outline"}
                     style={[
                       styles.accordionHeaderBadge,
-                      budgetStatus.percentage >= 100 && { backgroundColor: "#EF4444" },
-                      budgetStatus.percentage >= 80 && budgetStatus.percentage < 100 && { backgroundColor: "#F59E0B" },
+                      budgetStatus.percentage >= 100 && styles.badgeDanger,
+                      budgetStatus.percentage >= 80 && budgetStatus.percentage < 100 && styles.badgeWarning,
                     ]}
                   >
-                    <BadgeText style={{ fontSize: 13, fontWeight: "700" }}>
+                    <BadgeText style={styles.badgeTextBold}>
                       {budgetStatus.percentage}%
                     </BadgeText>
                   </Badge>
                 ) : (
                   <Badge variant="outline" style={styles.accordionHeaderBadge}>
-                    <BadgeText style={{ fontSize: 11 }}>Setup</BadgeText>
+                    <BadgeText style={styles.badgeSetupText}>Setup</BadgeText>
                   </Badge>
                 )}
               </View>
@@ -245,57 +244,3 @@ export function ExpensesDashboard() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  dashboardContainer: {
-    flex: 1,
-    position: "relative",
-    width: "100%",
-  },
-  scrollView: {
-    flex: 1,
-    width: "100%",
-  },
-  scrollContent: {
-    padding: spacing.md,
-    paddingBottom: 140,
-    maxWidth: maxContentWidth,
-    width: "100%",
-    alignSelf: "center",
-  },
-  loadingWrap: {
-    flex: 1,
-    padding: spacing.md,
-    gap: spacing.md,
-    maxWidth: maxContentWidth,
-    width: "100%",
-    alignSelf: "center",
-  },
-  accordionHeaderLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flex: 1,
-    paddingRight: spacing.xs,
-  },
-  accordionTitleCol: {
-    gap: 2,
-  },
-  accordionHeaderTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.ink,
-  },
-  accordionHeaderSub: {
-    fontSize: 12,
-    color: colors.muted,
-    fontWeight: "500",
-  },
-  accordionHeaderBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  sectionDivider: {
-    marginVertical: spacing.md,
-  },
-});

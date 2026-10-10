@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import {
   FlatList,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -24,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { colors, maxContentWidth, spacing } from "@/constants/theme";
+import { styles } from "@/styles/trash.styles";
 
 export default function Trash() {
   const trashed = useQuery(api.trash.listTrash);
@@ -80,9 +79,9 @@ export default function Trash() {
     >
       {trashed === undefined ? (
         <View style={styles.list}>
-          <Skeleton style={{ height: 110, marginBottom: spacing.sm, borderRadius: 12 }} />
-          <Skeleton style={{ height: 110, marginBottom: spacing.sm, borderRadius: 12 }} />
-          <Skeleton style={{ height: 110, marginBottom: spacing.sm, borderRadius: 12 }} />
+          <Skeleton style={styles.skeleton} />
+          <Skeleton style={styles.skeleton} />
+          <Skeleton style={styles.skeleton} />
         </View>
       ) : (
         <FlatList
@@ -123,37 +122,3 @@ export default function Trash() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.canvas,
-  },
-  card: {
-    backgroundColor: colors.surfaceCard,
-  },
-  cardDesc: {
-    marginTop: spacing.xxs,
-  },
-
-  emptyMessage: {
-    textAlign: "center",
-    marginTop: spacing.xxl,
-    color: colors.muted,
-  },
-  list: {
-    padding: spacing.md,
-    gap: spacing.sm,
-    maxWidth: maxContentWidth,
-    width: "100%",
-    alignSelf: "center",
-  },
-  actions: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.hairlineSoft,
-  },
-});

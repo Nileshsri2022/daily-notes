@@ -1,0 +1,102 @@
+import { Platform, StyleSheet } from "react-native";
+import { colors, radius, spacing } from "@/constants/theme";
+
+export const styles = StyleSheet.create({
+  sectionBlock: {
+    gap: spacing.sm,
+  },
+  sectionSubHeading: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  rangeInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    flexWrap: "wrap",
+  },
+  rangeNumberWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  rangeLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.ink,
+    marginRight: 2,
+  },
+  rangeStepBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    alignItems: "center",
+    justifyContent: "center",
+    ...(Platform.OS === "web" ? ({ cursor: "pointer", userSelect: "none" } as any) : {}),
+  },
+  rangeStepText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.ink,
+    lineHeight: 18,
+  },
+  rangeNumberBox: {
+    minWidth: 50,
+    height: 32,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.surfaceCard,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
+  rangeNumberInput: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.ink,
+    textAlign: "center",
+    width: "100%",
+    padding: 0,
+    margin: 0,
+    ...(Platform.OS === "web" ? ({ outlineWidth: 0 } as any) : {}),
+  },
+  rangeUnitRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: radius.md,
+    padding: 2,
+    gap: 2,
+  },
+  rangeUnitBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.sm,
+    ...(Platform.OS === "web" ? ({ cursor: "pointer", userSelect: "none" } as any) : {}),
+  },
+  rangeUnitBtnActive: {
+    backgroundColor: colors.surfaceCard,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  rangeUnitText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: colors.muted,
+  },
+  rangeUnitTextActive: {
+    fontWeight: "600",
+    color: colors.ink,
+  },
+});

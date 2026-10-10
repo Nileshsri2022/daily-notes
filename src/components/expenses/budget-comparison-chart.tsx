@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { BarChart } from "react-native-gifted-charts";
-import { colors, radius, spacing } from "@/constants/theme";
+import { colors } from "@/constants/theme";
+import { styles } from "@/styles/expenses/budget-comparison-chart.styles";
 
 export interface BudgetComparisonChartProps {
   targetBudget: number;
@@ -44,7 +45,7 @@ export function BudgetComparisonChart({
       label: "Current",
       frontColor: isOverBudget ? "#EF4444" : "#10B981", // Red if over, Emerald if under
       topLabelComponent: () => (
-        <Text style={[styles.barTopLabel, isOverBudget && { color: "#EF4444" }]}>
+        <Text style={[styles.barTopLabel, isOverBudget && styles.barTopLabelOver]}>
           {currencySymbol}{currentSpent.toFixed(0)}
         </Text>
       ),
@@ -76,12 +77,8 @@ export function BudgetComparisonChart({
           xAxisThickness={1}
           yAxisThickness={0}
           xAxisColor={colors.hairline}
-          yAxisTextStyle={{ color: colors.muted, fontSize: 10 }}
-          xAxisLabelTextStyle={{
-            color: colors.ink,
-            fontSize: 11,
-            fontWeight: "600",
-          }}
+          yAxisTextStyle={styles.yAxisText}
+          xAxisLabelTextStyle={styles.xAxisLabelText}
           maxValue={maxValue * 1.25}
           noOfSections={3}
           height={160}
@@ -92,18 +89,18 @@ export function BudgetComparisonChart({
       {/* Legend */}
       <View style={styles.legendRow}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+          <View style={[styles.legendDot, styles.legendDotTarget]} />
           <Text style={styles.legendText}>Target Budget</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: "#F59E0B" }]} />
+          <View style={[styles.legendDot, styles.legendDotHistorical]} />
           <Text style={styles.legendText}>Historical Avg</Text>
         </View>
         <View style={styles.legendItem}>
           <View
             style={[
               styles.legendDot,
-              { backgroundColor: isOverBudget ? "#EF4444" : "#10B981" },
+              isOverBudget ? styles.legendDotDanger : styles.legendDotSafe,
             ]}
           />
           <Text style={styles.legendText}>Current Cycle</Text>
@@ -112,59 +109,3 @@ export function BudgetComparisonChart({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: spacing.sm,
-  },
-  sectionHeading: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  subHeading: {
-    fontSize: 12,
-    color: colors.muted,
-    lineHeight: 16,
-  },
-  chartWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-  },
-  barTopLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: colors.ink,
-    marginBottom: 4,
-  },
-  legendRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-    flexWrap: "wrap",
-    marginTop: 4,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 11,
-    color: colors.muted,
-    fontWeight: "500",
-  },
-});

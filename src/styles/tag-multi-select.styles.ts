@@ -1,0 +1,197 @@
+import { Platform, StyleSheet } from "react-native";
+import { colors, radius, spacing } from "@/constants/theme";
+
+export const styles = StyleSheet.create({
+  container: {
+    marginTop: spacing.xs,
+    position: "relative",
+    zIndex: 20,
+  },
+  trigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    ...(Platform.OS === "web" ? ({ cursor: "pointer", userSelect: "none" } as any) : {}),
+  },
+  triggerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+  tagIcon: {
+    fontSize: 14,
+  },
+  placeholderText: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  selectedLabelWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  selectedCountText: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  countBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    height: 18,
+  },
+  countBadgeText: {
+    fontSize: 10,
+  },
+  triggerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  clearBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.xs,
+    backgroundColor: colors.surfaceSoft,
+    ...(Platform.OS === "web" ? ({ cursor: "pointer" } as any) : {}),
+  },
+  clearBtnText: {
+    fontSize: 11,
+    color: colors.muted,
+    fontWeight: "600",
+  },
+  arrowText: {
+    color: colors.muted,
+    fontSize: 11,
+    marginLeft: 2,
+  },
+  activeChipsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 6,
+  },
+  activeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    ...(Platform.OS === "web" ? ({ cursor: "pointer" } as any) : {}),
+  },
+  activeChipText: {
+    color: colors.onPrimary,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  activeChipRemove: {
+    color: colors.onPrimary,
+    fontSize: 10,
+    fontWeight: "700",
+    opacity: 0.8,
+  },
+  dropdown: {
+    backgroundColor: colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: radius.md,
+    marginTop: 4,
+    padding: spacing.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  dropdownHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
+    paddingBottom: spacing.xxs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairlineSoft,
+  },
+  dropdownTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.ink,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  actionBtn: {
+    height: 28,
+    paddingHorizontal: 8,
+  },
+  tagSearchInput: {
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    fontSize: 13,
+    color: colors.ink,
+    marginBottom: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+  },
+  tagsScroll: {
+    maxHeight: 180,
+  },
+  tagsScrollContent: {
+    gap: 2,
+  },
+  noTagsText: {
+    fontSize: 13,
+    color: colors.muted,
+    textAlign: "center",
+    paddingVertical: spacing.md,
+  },
+  tagRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderRadius: radius.sm,
+    ...(Platform.OS === "web" ? ({ cursor: "pointer" } as any) : {}),
+  },
+  tagRowSelected: {
+    backgroundColor: colors.surfaceSoft,
+  },
+  tagName: {
+    fontSize: 13,
+    color: colors.ink,
+    fontWeight: "500",
+    flex: 1,
+  },
+  tagNameSelected: {
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  tagItemCountBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  dropdownFooter: {
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.hairlineSoft,
+  },
+  doneButton: {
+    width: "100%",
+  },
+});

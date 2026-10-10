@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from "react-native";
@@ -16,7 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { themeVars } from "@/theme/theme-provider";
-import { colors, spacing, type } from "@/constants/theme";
+import { colors, type } from "@/constants/theme";
+import { styles } from "@/styles/sign-in.styles";
 
 
 export default function SignInScreen() {
@@ -272,7 +272,7 @@ export default function SignInScreen() {
           )}
 
           {error ? (
-            <Text style={{ color: colors.error, fontSize: 13, marginBottom: spacing.sm }}>
+            <Text style={styles.errorText}>
               {error}
             </Text>
           ) : null}
@@ -322,17 +322,3 @@ export default function SignInScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: spacing.lg,
-    maxWidth: 480,
-    width: "100%",
-    alignSelf: "center",
-  },
-  title: { textAlign: "center", marginBottom: spacing.xs },
-  subtitle: { textAlign: "center", marginBottom: spacing.lg },
-});

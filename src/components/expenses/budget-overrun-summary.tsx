@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Badge, BadgeText } from "@/components/ui/badge";
-import { colors, radius, spacing } from "@/constants/theme";
+import { styles } from "@/styles/expenses/budget-overrun-summary.styles";
 
 export interface BudgetOverrunSummaryProps {
   lastCycleOverrun: number | null;
@@ -32,20 +32,20 @@ export function BudgetOverrunSummary({
             <Text style={styles.naText}>No past cycles yet</Text>
           ) : lastOver ? (
             <View style={styles.valRow}>
-              <Text style={[styles.cardValue, { color: "#EF4444" }]}>
+              <Text style={[styles.cardValue, styles.cardValueDanger]}>
                 +{currencySymbol}{lastCycleOverrun.toFixed(2)}
               </Text>
-              <Badge variant="default" style={[styles.badge, { backgroundColor: "#EF4444" }]}>
-                <BadgeText style={{ fontSize: 10 }}>Overrun</BadgeText>
+              <Badge variant="default" style={[styles.badge, styles.badgeDanger]}>
+                <BadgeText style={styles.badgeTextSmall}>Overrun</BadgeText>
               </Badge>
             </View>
           ) : lastSaved ? (
             <View style={styles.valRow}>
-              <Text style={[styles.cardValue, { color: "#10B981" }]}>
+              <Text style={[styles.cardValue, styles.cardValueSuccess]}>
                 -{currencySymbol}{Math.abs(lastCycleOverrun).toFixed(2)}
               </Text>
-              <Badge variant="default" style={[styles.badge, { backgroundColor: "#10B981" }]}>
-                <BadgeText style={{ fontSize: 10 }}>Saved</BadgeText>
+              <Badge variant="default" style={[styles.badge, styles.badgeSuccess]}>
+                <BadgeText style={styles.badgeTextSmall}>Saved</BadgeText>
               </Badge>
             </View>
           ) : (
@@ -61,7 +61,7 @@ export function BudgetOverrunSummary({
               <Text
                 style={[
                   styles.cardValue,
-                  { color: avgOver ? "#F59E0B" : "#10B981" },
+                  avgOver ? styles.cardValueWarning : styles.cardValueSuccess,
                 ]}
               >
                 {avgOver ? "+" : "-"}
@@ -69,7 +69,7 @@ export function BudgetOverrunSummary({
                 {Math.abs(historicalAverageOverrun).toFixed(2)}
               </Text>
               <Badge variant="outline" style={styles.badge}>
-                <BadgeText style={{ fontSize: 10 }}>
+                <BadgeText style={styles.badgeTextSmall}>
                   {completedCyclesCount} cycle{completedCyclesCount === 1 ? "" : "s"}
                 </BadgeText>
               </Badge>
@@ -94,74 +94,3 @@ export function BudgetOverrunSummary({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: spacing.sm,
-  },
-  sectionHeading: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  cardsRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    padding: spacing.sm,
-    gap: 4,
-  },
-  cardLabel: {
-    fontSize: 11,
-    color: colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  cardValue: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.ink,
-  },
-  naText: {
-    fontSize: 13,
-    color: colors.muted,
-    fontWeight: "500",
-  },
-  valRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 4,
-  },
-  badge: {
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-  },
-  insightBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    backgroundColor: colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: radius.md,
-    padding: spacing.sm,
-  },
-  insightIcon: {
-    fontSize: 14,
-  },
-  insightText: {
-    fontSize: 12,
-    color: colors.muted,
-    lineHeight: 16,
-    flex: 1,
-  },
-});
