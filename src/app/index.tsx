@@ -11,6 +11,7 @@ import { useBreakpoints } from "@/hooks/use-breakpoints";
 
 import { NoteCover } from "@/components/note-cover";
 import { ActionItemsView } from "@/components/action-items-view";
+import { CalendarView } from "@/components/calendar-view";
 import { ExpensesDashboard } from "@/components/expenses-dashboard";
 import { TagMultiSelect } from "@/components/tag-multi-select";
 import { Badge, BadgeText } from "@/components/ui/badge";
@@ -48,7 +49,9 @@ export default function Feed() {
   const insets = useSafeAreaInsets();
   const { isDesktop } = useBreakpoints();
 
-  const [mainTab, setMainTab] = useState<"notes" | "tasks" | "expenses">("notes");
+  const [mainTab, setMainTab] = useState<
+    "notes" | "tasks" | "expenses" | "calendar"
+  >("notes");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -222,6 +225,18 @@ export default function Feed() {
                   }}
                 />
               </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={mainTab === "calendar"}
+                  icon={<Text style={{ fontSize: 16 }}>📅</Text>}
+                  title="Calendar"
+                  onPress={() => {
+                    setMainTab("calendar");
+                    setSidebarOpen(false);
+                  }}
+                />
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroup>
 
@@ -258,7 +273,9 @@ export default function Feed() {
       </Sidebar>
 
       <View style={styles.container}>
-        {notes === undefined ? (
+        {/* Calendar renders immediately (dots fill in when notes load);
+            other tabs show skeletons until data arrives. */}
+        {notes === undefined && mainTab !== "calendar" ? (
           <View style={styles.controlsWrap}>
             <Skeleton
               style={{ height: 42, borderRadius: radius.md, marginBottom: spacing.md }}
@@ -322,6 +339,9 @@ export default function Feed() {
 
             {/* Tab 3: Expenses Dashboard */}
             {mainTab === "expenses" ? <ExpensesDashboard /> : null}
+
+            {/* Tab 4: Calendar View */}
+            {mainTab === "calendar" ? <CalendarView notes={notes} /> : null}
           </>
         )}
 
