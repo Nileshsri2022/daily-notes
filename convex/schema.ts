@@ -15,6 +15,33 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["clerkUserId", "updatedAt"]),
 
+  weeklyDigests: defineTable({
+    clerkUserId: v.string(),
+    weekKey: v.string(), // "2026-W41" (Monday of the week)
+    generatedAt: v.number(),
+    model: v.string(),
+    stats: v.object({
+      notesWritten: v.number(),
+      tasksDone: v.number(),
+      tasksPending: v.number(),
+      pendingTasks: v.array(v.string()),
+      totalSpent: v.number(),
+      currency: v.string(),
+      topCategories: v.array(
+        v.object({ category: v.string(), amount: v.number() }),
+      ),
+      habitsChecked: v.number(),
+      activeStreaks: v.number(),
+    }),
+    ai: v.object({
+      summary: v.string(),
+      moodByDay: v.array(
+        v.object({ date: v.string(), score: v.number(), label: v.string() }),
+      ),
+      keyMoments: v.array(v.string()),
+    }),
+  }).index("by_user_week", ["clerkUserId", "weekKey"]),
+
   habits: defineTable({
     clerkUserId: v.string(),
     name: v.string(),

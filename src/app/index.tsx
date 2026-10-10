@@ -13,6 +13,7 @@ import { NoteCover } from "@/components/note-cover";
 import { ActionItemsView } from "@/components/action-items-view";
 import { CalendarView } from "@/components/calendar-view";
 import { HabitsView } from "@/components/habits-view";
+import { ReviewView } from "@/components/review-view";
 import { ExpensesDashboard } from "@/components/expenses-dashboard";
 import { TagMultiSelect } from "@/components/tag-multi-select";
 import { Badge, BadgeText } from "@/components/ui/badge";
@@ -51,7 +52,7 @@ export default function Feed() {
   const { isDesktop } = useBreakpoints();
 
   const [mainTab, setMainTab] = useState<
-    "notes" | "tasks" | "expenses" | "calendar" | "habits"
+    "notes" | "tasks" | "expenses" | "calendar" | "habits" | "review"
   >("notes");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -250,6 +251,18 @@ export default function Feed() {
                   }}
                 />
               </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={mainTab === "review"}
+                  icon={<Text style={{ fontSize: 16 }}>📰</Text>}
+                  title="Review"
+                  onPress={() => {
+                    setMainTab("review");
+                    setSidebarOpen(false);
+                  }}
+                />
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroup>
 
@@ -288,7 +301,10 @@ export default function Feed() {
       <View style={styles.container}>
         {/* Calendar renders immediately (dots fill in when notes load);
             other tabs show skeletons until data arrives. */}
-        {notes === undefined && mainTab !== "calendar" && mainTab !== "habits" ? (
+        {notes === undefined &&
+        mainTab !== "calendar" &&
+        mainTab !== "habits" &&
+        mainTab !== "review" ? (
           <View style={styles.controlsWrap}>
             <Skeleton
               style={{ height: 42, borderRadius: radius.md, marginBottom: spacing.md }}
@@ -357,6 +373,8 @@ export default function Feed() {
             {mainTab === "calendar" ? <CalendarView notes={notes} /> : null}
 
             {mainTab === "habits" ? <HabitsView /> : null}
+
+            {mainTab === "review" ? <ReviewView /> : null}
           </>
         )}
 

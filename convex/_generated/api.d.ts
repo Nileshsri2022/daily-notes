@@ -15,6 +15,7 @@ import type * as expenses from "../expenses.js";
 import type * as habits from "../habits.js";
 import type * as helpers from "../helpers.js";
 import type * as notes from "../notes.js";
+import type * as review from "../review.js";
 import type * as trash from "../trash.js";
 
 import type {
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   habits: typeof habits;
   helpers: typeof helpers;
   notes: typeof notes;
+  review: typeof review;
   trash: typeof trash;
 }>;
 
