@@ -15,6 +15,23 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["clerkUserId", "updatedAt"]),
 
+  habits: defineTable({
+    clerkUserId: v.string(),
+    name: v.string(),
+    icon: v.optional(v.string()),
+    color: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_user", ["clerkUserId"]),
+
+  habitChecks: defineTable({
+    habitId: v.id("habits"),
+    clerkUserId: v.string(),
+    date: v.string(), // local "YYYY-MM-DD" day key
+    createdAt: v.number(),
+  })
+    .index("by_habit", ["habitId"])
+    .index("by_user_date", ["clerkUserId", "date"]),
+
   expenses: defineTable({
     clerkUserId: v.string(),
     noteId: v.id("notes"),

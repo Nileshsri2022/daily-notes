@@ -12,6 +12,7 @@ import { useBreakpoints } from "@/hooks/use-breakpoints";
 import { NoteCover } from "@/components/note-cover";
 import { ActionItemsView } from "@/components/action-items-view";
 import { CalendarView } from "@/components/calendar-view";
+import { HabitsView } from "@/components/habits-view";
 import { ExpensesDashboard } from "@/components/expenses-dashboard";
 import { TagMultiSelect } from "@/components/tag-multi-select";
 import { Badge, BadgeText } from "@/components/ui/badge";
@@ -50,7 +51,7 @@ export default function Feed() {
   const { isDesktop } = useBreakpoints();
 
   const [mainTab, setMainTab] = useState<
-    "notes" | "tasks" | "expenses" | "calendar"
+    "notes" | "tasks" | "expenses" | "calendar" | "habits"
   >("notes");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -237,6 +238,18 @@ export default function Feed() {
                   }}
                 />
               </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={mainTab === "habits"}
+                  icon={<Text style={{ fontSize: 16 }}>🌱</Text>}
+                  title="Habits"
+                  onPress={() => {
+                    setMainTab("habits");
+                    setSidebarOpen(false);
+                  }}
+                />
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroup>
 
@@ -275,7 +288,7 @@ export default function Feed() {
       <View style={styles.container}>
         {/* Calendar renders immediately (dots fill in when notes load);
             other tabs show skeletons until data arrives. */}
-        {notes === undefined && mainTab !== "calendar" ? (
+        {notes === undefined && mainTab !== "calendar" && mainTab !== "habits" ? (
           <View style={styles.controlsWrap}>
             <Skeleton
               style={{ height: 42, borderRadius: radius.md, marginBottom: spacing.md }}
@@ -342,6 +355,8 @@ export default function Feed() {
 
             {/* Tab 4: Calendar View */}
             {mainTab === "calendar" ? <CalendarView notes={notes} /> : null}
+
+            {mainTab === "habits" ? <HabitsView /> : null}
           </>
         )}
 
