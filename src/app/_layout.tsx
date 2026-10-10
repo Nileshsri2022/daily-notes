@@ -14,6 +14,7 @@ import "../global.css";
 import { FontProvider } from "@/theme/FontProvider";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { styles } from "@/styles/layout.styles";
+import { useBreakpoints } from "@/hooks/use-breakpoints";
 
 export default function RootLayout() {
   const ready =
@@ -52,6 +53,7 @@ function Providers() {
 }
 
 function DevProviders() {
+  const { isDesktop } = useBreakpoints();
   const convex = useMemo(
     () =>
       new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
@@ -83,7 +85,10 @@ function DevProviders() {
                 name="index"
                 options={{
                   title: "Dincharya",
-                  headerLeft: () => <SidebarTrigger style={{ marginRight: 12 }} />,
+                  // Sidebar is a persistent panel on desktop — no toggle needed.
+                  headerLeft: isDesktop
+                    ? undefined
+                    : () => <SidebarTrigger style={{ marginRight: 12 }} />,
                   headerRight:
                     Platform.OS === "web"
                       ? () => (
@@ -109,6 +114,7 @@ function DevProviders() {
 
 function RootNavigator() {
   const { isSignedIn, isLoaded } = useAuth();
+  const { isDesktop } = useBreakpoints();
   const router = useRouter();
 
   if (!isLoaded) {
@@ -140,7 +146,10 @@ function RootNavigator() {
             name="index"
             options={{
               title: "Dincharya",
-              headerLeft: () => <SidebarTrigger style={{ marginRight: 12 }} />,
+              // Sidebar is a persistent panel on desktop — no toggle needed.
+              headerLeft: isDesktop
+                ? undefined
+                : () => <SidebarTrigger style={{ marginRight: 12 }} />,
               headerRight:
                 Platform.OS === "web"
                   ? () => (

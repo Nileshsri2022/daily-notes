@@ -4,6 +4,7 @@ import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { colors, type } from "@/constants/theme";
 import { styles } from "@/styles/expenses/category-donut-chart.styles";
+import { useBreakpoints } from "@/hooks/use-breakpoints";
 import { CATEGORY_COLORS, CATEGORY_ICONS } from "./constants";
 
 export interface CategoryBreakdownItem {
@@ -29,6 +30,11 @@ export function CategoryDonutChart({
   activeCategoryFilter,
   onSelectCategory,
 }: CategoryDonutChartProps) {
+  const { isDesktop, isTablet } = useBreakpoints();
+  // Give the donut more presence on roomy screens.
+  const donutRadius = isDesktop ? 120 : isTablet ? 108 : 96;
+  const donutInnerRadius = isDesktop ? 85 : isTablet ? 76 : 68;
+
   const pieData =
     categoryBreakdown.length > 0
       ? categoryBreakdown.map((cat) => ({
@@ -52,8 +58,8 @@ export function CategoryDonutChart({
         <PieChart
           donut
           data={pieData}
-          radius={96}
-          innerRadius={68}
+          radius={donutRadius}
+          innerRadius={donutInnerRadius}
           innerCircleColor={colors.surfaceCard}
           centerLabelComponent={() => (
             <View style={styles.donutCenterLabel}>
@@ -79,7 +85,7 @@ export function CategoryDonutChart({
           <Text style={styles.legendHeading}>
             Categories (Tap to filter)
           </Text>
-          <View style={styles.legendGrid}>
+          <View style={[styles.legendGrid, isDesktop && styles.legendGridWide]}>
             {categoryBreakdown.map((cat) => {
               const isSelected = activeCategoryFilter === cat.category;
               const catColor = CATEGORY_COLORS[cat.category] || "#64748B";
@@ -93,6 +99,7 @@ export function CategoryDonutChart({
                   }
                   style={[
                     styles.legendChip,
+                    isDesktop && styles.legendChipWide,
                     isSelected && [
                       styles.legendChipSelected,
                       { borderColor: catColor },

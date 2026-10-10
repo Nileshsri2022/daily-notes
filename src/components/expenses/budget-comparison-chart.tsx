@@ -2,6 +2,7 @@ import { Text, View } from "react-native";
 import { BarChart } from "react-native-gifted-charts";
 import { colors } from "@/constants/theme";
 import { styles } from "@/styles/expenses/budget-comparison-chart.styles";
+import { useBreakpoints } from "@/hooks/use-breakpoints";
 
 export interface BudgetComparisonChartProps {
   targetBudget: number;
@@ -17,6 +18,10 @@ export function BudgetComparisonChart({
   currencySymbol,
 }: BudgetComparisonChartProps) {
   const isOverBudget = currentSpent > targetBudget;
+  const { isDesktop } = useBreakpoints();
+  // Roomier chart on wide screens.
+  const chartHeight = isDesktop ? 200 : 160;
+  const barWidth = isDesktop ? 56 : 44;
 
   const barData = [
     {
@@ -69,7 +74,7 @@ export function BudgetComparisonChart({
       <View style={styles.chartWrapper}>
         <BarChart
           data={barData}
-          barWidth={44}
+          barWidth={barWidth}
           spacing={28}
           roundedTop
           roundedBottom={false}
@@ -81,7 +86,7 @@ export function BudgetComparisonChart({
           xAxisLabelTextStyle={styles.xAxisLabelText}
           maxValue={maxValue * 1.25}
           noOfSections={3}
-          height={160}
+          height={chartHeight}
           isAnimated
         />
       </View>

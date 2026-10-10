@@ -122,9 +122,15 @@ export function SidebarTrigger({
 export function Sidebar({
   children,
   style,
+  persistent = false,
 }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  /**
+   * Render as a static in-flow panel instead of an overlay drawer.
+   * Used on desktop/wide layouts where navigation stays visible.
+   */
+  persistent?: boolean;
 }) {
   const { open, setOpen } = useSidebar();
   const [mounted, setMounted] = React.useState(open);
@@ -150,6 +156,22 @@ export function Sidebar({
       });
     }
   }, [open, anim]);
+
+  if (persistent) {
+    return (
+      <View style={[styles.sidebarPersistent, style]}>
+        <SafeAreaView style={styles.safeArea} edges={["top", "bottom", "left"]}>
+          <View style={styles.sidebarHeader}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ fontSize: 18 }}>📖</Text>
+              <Text style={[type.titleSm, styles.drawerTitle]}>Dincharya</Text>
+            </View>
+          </View>
+          {children}
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   if (!mounted) {
     return null;
@@ -396,6 +418,12 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  sidebarPersistent: {
+    width: 290,
+    backgroundColor: colors.surfaceCard,
+    borderRightWidth: 1,
+    borderRightColor: colors.hairline,
   },
   sidebarHeader: {
     flexDirection: "row",

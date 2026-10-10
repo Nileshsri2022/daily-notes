@@ -7,6 +7,10 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     position: "relative",
   },
+  /** Desktop: sidebar panel sits beside the content instead of overlaying it. */
+  safeDesktop: {
+    flexDirection: "row",
+  },
   container: {
     flex: 1,
     width: "100%",

@@ -3,17 +3,11 @@ import { useQuery } from "convex/react";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
-import {
-  FlatList,
-  Platform,
-  Pressable,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import { FlatList, Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useClerk } from "@clerk/clerk-expo";
 import { styles } from "@/styles/feed.styles";
+import { useBreakpoints } from "@/hooks/use-breakpoints";
 
 import { NoteCover } from "@/components/note-cover";
 import { ActionItemsView } from "@/components/action-items-view";
@@ -52,8 +46,7 @@ export default function Feed() {
   const notes = useQuery(api.notes.list);
   const { setOpen: setSidebarOpen } = useSidebar();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const isMobile = Platform.OS !== "web" || width < 768;
+  const { isDesktop } = useBreakpoints();
 
   const [mainTab, setMainTab] = useState<"notes" | "tasks" | "expenses">("notes");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -166,9 +159,9 @@ export default function Feed() {
   );
 
   return (
-    <View style={styles.safe}>
-      {/* Sidebar Navigation Drawer */}
-      <Sidebar>
+    <View style={[styles.safe, isDesktop && styles.safeDesktop]}>
+      {/* Sidebar Navigation Drawer (persistent panel on desktop) */}
+      <Sidebar persistent={isDesktop}>
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupLabel>VIEWS</SidebarGroupLabel>
@@ -249,17 +242,19 @@ export default function Feed() {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter>
-          {Platform.OS === "web" ? (
-            <Text style={styles.sidebarShortcutHint}>
-              Press Ctrl+B to toggle sidebar
-            </Text>
-          ) : (
-            <View style={styles.mobileDrawerFooter}>
-              <MobileDrawerSignOutButton onSignedOut={() => setSidebarOpen(false)} />
-            </View>
-          )}
-        </SidebarFooter>
+        {!isDesktop && (
+          <SidebarFooter>
+            {Platform.OS === "web" ? (
+              <Text style={styles.sidebarShortcutHint}>
+                Press Ctrl+B to toggle sidebar
+              </Text>
+            ) : (
+              <View style={styles.mobileDrawerFooter}>
+                <MobileDrawerSignOutButton onSignedOut={() => setSidebarOpen(false)} />
+              </View>
+            )}
+          </SidebarFooter>
+        )}
       </Sidebar>
 
       <View style={styles.container}>
@@ -285,7 +280,7 @@ export default function Feed() {
                 renderItem={renderNoteItem}
                 contentContainerStyle={[
                   styles.list,
-                  isMobile && { paddingBottom: 140 + bottomInset },
+                  !isDesktop && { paddingBottom: 140 + bottomInset },
                 ]}
                 contentInsetAdjustmentBehavior="automatic"
                 keyboardShouldPersistTaps="handled"

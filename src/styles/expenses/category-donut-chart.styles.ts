@@ -56,6 +56,15 @@ export const styles = StyleSheet.create({
   legendGrid: {
     gap: spacing.xs,
   },
+  /** Desktop: two-column legend to use the wider column. */
+  legendGridWide: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  legendChipWide: {
+    flexGrow: 1,
+    flexBasis: "48%",
+  },
   legendChip: {
     flexDirection: "row",
     alignItems: "center",
