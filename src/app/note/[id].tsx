@@ -16,6 +16,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { MarkdownView } from "@/components/markdown-view";
 import { HtmlView } from "@/components/html-view";
 import { NoteCover } from "@/components/note-cover";
+import { WorkflowCard } from "@/components/workflow-card";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -230,6 +231,9 @@ export default function NoteView() {
             </CardContent>
           </Card>
         ) : null}
+
+        {/* n8n Workflow (prompt-to-workflow) */}
+        <WorkflowCard noteId={id as Id<"notes">} />
 
         {/* Note Body */}
         <View style={styles.bodyWrap}>

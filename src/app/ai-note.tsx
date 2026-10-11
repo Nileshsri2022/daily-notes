@@ -29,6 +29,7 @@ export default function AINote() {
   const generateNote = useAction(api.ai.generateNote);
   const createNote = useMutation(api.notes.create);
   const logExpenses = useMutation(api.expenses.logFromNote);
+  const requestWorkflow = useAction(api.workflows.requestFromNote);
 
   const [step, setStep] = useState<"record" | "preview">("record");
   const [transcript, setTranscript] = useState("");
@@ -42,6 +43,7 @@ export default function AINote() {
   const [tagsInput, setTagsInput] = useState("");
   const [previewTab, setPreviewTab] = useState<"rendered" | "source">("rendered");
   const [saving, setSaving] = useState(false);
+  const [workflowIntent, setWorkflowIntent] = useState(false);
 
   const appendSegment = useCallback((segment: string) => {
     setTranscript((prev) => (prev ? `${prev} ${segment}` : segment));
@@ -81,6 +83,7 @@ export default function AINote() {
       setBody(result.body);
       setTagsInput(result.tags.join(", "));
       setExtractedExpenses(result.expenses || []);
+      setWorkflowIntent(result.workflowIntent ?? false);
       setStep("preview");
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : String(err);
@@ -118,6 +121,13 @@ export default function AINote() {
         } catch (expErr) {
           console.warn("Could not log expenses:", expErr);
         }
+      }
+
+      if (workflowIntent && transcript.trim()) {
+        // Fire-and-forget: workflow generation must never break the save flow.
+        requestWorkflow({ noteId, prompt: transcript.trim() }).catch((wfErr) => {
+          console.warn("Workflow request failed:", wfErr);
+        });
       }
 
       router.replace("/");

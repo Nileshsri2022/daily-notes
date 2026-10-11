@@ -1,5 +1,6 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
+import { detectWorkflowIntent } from "../src/lib/n8n";
 
 export const generateNote = action({
   args: {
@@ -175,6 +176,9 @@ Respond ONLY with valid JSON in this exact structure:
         typeof parsed.totalExpenses === "number"
           ? Math.round(parsed.totalExpenses * 100) / 100
           : sanitizedExpenses.reduce((sum, e) => sum + e.amount, 0),
+      // Cheap regex intent check on the raw transcript: the client uses this to
+      // fire-and-forget a workflow request after the note is saved.
+      workflowIntent: detectWorkflowIntent(transcript),
     };
   },
 });

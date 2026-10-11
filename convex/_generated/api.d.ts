@@ -14,10 +14,13 @@ import type * as email from "../email.js";
 import type * as expenses from "../expenses.js";
 import type * as habits from "../habits.js";
 import type * as helpers from "../helpers.js";
+import type * as http from "../http.js";
 import type * as moods from "../moods.js";
+import type * as n8n from "../n8n.js";
 import type * as notes from "../notes.js";
 import type * as review from "../review.js";
 import type * as trash from "../trash.js";
+import type * as workflows from "../workflows.js";
 
 import type {
   ApiFromModules,
@@ -32,10 +35,13 @@ declare const fullApi: ApiFromModules<{
   expenses: typeof expenses;
   habits: typeof habits;
   helpers: typeof helpers;
+  http: typeof http;
   moods: typeof moods;
+  n8n: typeof n8n;
   notes: typeof notes;
   review: typeof review;
   trash: typeof trash;
+  workflows: typeof workflows;
 }>;
 
 /**

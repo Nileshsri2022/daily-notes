@@ -106,5 +106,34 @@ export default defineSchema({
     actualSpent: v.number(),
     overrun: v.number(),
   }).index("by_user", ["clerkUserId"]),
+
+  workflowRequests: defineTable({
+    clerkUserId: v.string(),
+    noteId: v.optional(v.id("notes")),
+    prompt: v.string(),
+    status: v.union(
+      v.literal("drafting"),
+      v.literal("ready"),
+      v.literal("failed")
+    ),
+    n8nWorkflowId: v.optional(v.string()),
+    n8nUrl: v.optional(v.string()),
+    webhookPath: v.optional(v.string()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_note", ["noteId"]),
+
+  workflowRuns: defineTable({
+    requestId: v.id("workflowRequests"),
+    runId: v.string(),
+    status: v.union(
+      v.literal("running"),
+      v.literal("success"),
+      v.literal("failed")
+    ),
+    summary: v.optional(v.string()),
+    startedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+  }).index("by_runId", ["runId"]),
 });
 
