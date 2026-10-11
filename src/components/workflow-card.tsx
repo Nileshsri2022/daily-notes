@@ -60,8 +60,12 @@ export function WorkflowCard({ noteId }: { noteId: Id<"notes"> }) {
   const [retrying, setRetrying] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Note: Date.now() in render is intentionally impure here — the active-run
+  // check is time-based and re-evaluates on every reactive query update.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
   const hasActiveRun = (runs ?? []).some(
-    (r) => r.status === "running" && Date.now() - r.startedAt < ACTIVE_RUN_TIMEOUT_MS,
+    (r) => r.status === "running" && nowMs - r.startedAt < ACTIVE_RUN_TIMEOUT_MS,
   );
 
   if (request === undefined || request === null) return null;
@@ -120,6 +124,14 @@ export function WorkflowCard({ noteId }: { noteId: Id<"notes"> }) {
 
         {request.status === "failed" && request.error ? (
           <Text style={[type.bodySm, styles.error]}>{request.error}</Text>
+        ) : null}
+
+        {request.status === "drafting" &&
+        request.progressLog &&
+        request.progressLog.length > 0 ? (
+          <Text style={[type.caption, styles.progressLog]}>
+            {request.progressLog.slice(-3).join("\n")}
+          </Text>
         ) : null}
 
         {actionError ? (

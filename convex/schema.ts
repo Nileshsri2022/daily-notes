@@ -120,6 +120,7 @@ export default defineSchema({
     n8nUrl: v.optional(v.string()),
     webhookPath: v.optional(v.string()),
     error: v.optional(v.string()),
+    progressLog: v.optional(v.array(v.string())),
     createdAt: v.number(),
   }).index("by_note", ["noteId"]),
 

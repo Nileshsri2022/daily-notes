@@ -68,21 +68,37 @@ export const updateRequest = internalMutation({
     n8nUrl: v.optional(v.string()),
     webhookPath: v.optional(v.string()),
     error: v.optional(v.string()),
+    progressLog: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const { id, status, n8nWorkflowId, n8nUrl, webhookPath, error } = args;
+    const { id, status, n8nWorkflowId, n8nUrl, webhookPath, error, progressLog } =
+      args;
     const patch: {
       status: "drafting" | "ready" | "failed";
       n8nWorkflowId?: string;
       n8nUrl?: string;
       webhookPath?: string;
       error?: string;
+      progressLog?: string[];
     } = { status };
     if (n8nWorkflowId !== undefined) patch.n8nWorkflowId = n8nWorkflowId;
     if (n8nUrl !== undefined) patch.n8nUrl = n8nUrl;
     if (webhookPath !== undefined) patch.webhookPath = webhookPath;
     if (error !== undefined) patch.error = error;
+    if (progressLog !== undefined) patch.progressLog = progressLog;
     await ctx.db.patch(id, patch);
+  },
+});
+
+/** Append a progress line to a request's log (capped). Powers the live
+ * "what's happening" timeline the card shows while drafting. */
+export const appendRequestLog = internalMutation({
+  args: { id: v.id("workflowRequests"), line: v.string() },
+  handler: async (ctx, { id, line }) => {
+    const req = await ctx.db.get(id);
+    if (!req) return;
+    const log = [...(req.progressLog ?? []), line].slice(-8);
+    await ctx.db.patch(id, { progressLog: log });
   },
 });
 
@@ -306,6 +322,11 @@ export const retryRequest = action({
       id: requestId,
       status: "drafting",
       error: "",
+      progressLog: [],
+    });
+    await ctx.runMutation(internal.workflows.appendRequestLog, {
+      id: requestId,
+      line: "Retrying…",
     });
     await ctx.scheduler.runAfter(0, internal.workflows.generateWorkflow, {
       requestId,
@@ -398,9 +419,13 @@ async function generateWithRetry(
   const { system, user } = buildWorkflowPrompt(prompt, callbackUrl);
   let lastErrors: string[] = [...initialErrors];
   let lastRaw = "";
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // Two attempts: with a capable model the first usually validates; a third
+  // rarely helps and each call costs ~1 minute against the action timeout.
+  for (let attempt = 0; attempt < 2; attempt++) {
     const res = await fetch(url, {
       method: "POST",
+      // A hung provider must not hang the action past Convex's timeout.
+      signal: AbortSignal.timeout(180_000),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
@@ -632,9 +657,21 @@ export const generateWorkflow = internalAction({
     try {
       // Fail fast with clear errors when n8n / callback URL are not configured.
       const callbackUrl = getCallbackUrl();
+      // Guard against Convex's 10-minute action timeout: stop starting new
+      // slow steps past ~7 minutes and fail gracefully instead of dying
+      // silently mid-flight (which would freeze the card on "Drafting…").
+      const startMs = Date.now();
+      const MAX_ELAPSED_MS = 7 * 60 * 1000;
+      const outOfTime = () => Date.now() - startMs > MAX_ELAPSED_MS;
+      const log = (line: string) =>
+        ctx.runMutation(internal.workflows.appendRequestLog, {
+          id: requestId,
+          line,
+        });
       // A repeated "Try again" reuses the stored n8n id so retries update the
       // existing workflow in place instead of leaving orphaned duplicates.
       let n8nId: string | null = request.n8nWorkflowId ?? null;
+      await log("Asking AI to draft the workflow…");
       let workflow = finalizeWorkflowForN8n(
         await generateWithRetry(request.prompt, callbackUrl),
       );
@@ -644,7 +681,17 @@ export const generateWorkflow = internalAction({
       // failed test run's log as context. "Ready" is only granted to a
       // workflow that survives a live test execution.
       for (let attempt = 0; attempt <= MAX_TEST_FIX_ATTEMPTS; attempt++) {
+        if (outOfTime()) {
+          await log("Taking too long — stopping gracefully.");
+          await fail(
+            n8nId,
+            workflow,
+            "Generation timed out after ~7 minutes. Try again, or switch to a faster model.",
+          );
+          return;
+        }
         if (attempt > 0 && lastError) {
+          await log("Test failed — regenerating with the error as context…");
           workflow = finalizeWorkflowForN8n(
             await generateWithRetry(request.prompt, callbackUrl, [
               `Live test run failed: ${lastError} — fix the workflow so the test passes.`,
@@ -652,11 +699,13 @@ export const generateWorkflow = internalAction({
           );
         }
         if (n8nId) {
+          await log("Updating workflow on n8n…");
           await updateWorkflowOnN8n(
             n8nId,
             workflow as unknown as Record<string, unknown>,
           );
         } else {
+          await log("Creating workflow on n8n…");
           const created = await createWorkflowOnN8n(
             workflow as unknown as Record<string, unknown>,
           );
@@ -669,11 +718,14 @@ export const generateWorkflow = internalAction({
           lastError = "Could not determine webhook path from generated workflow";
           break;
         }
+        await log("Running live test…");
         const test = await runTestAndWait(ctx, requestId, n8nId, webhookPath);
         if (test.ok) {
+          await log("Test passed ✓");
           await saveProgress(n8nId, workflow, "ready");
           return;
         }
+        await log(`Test failed: ${test.error.slice(0, 120)}`);
         lastError = test.error;
         // Config/trigger problems (bad secret, unreachable webhook) can't be
         // fixed by regenerating — surface them instead of looping.

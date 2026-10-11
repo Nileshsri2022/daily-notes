@@ -24,6 +24,10 @@ export const styles = StyleSheet.create({
   error: {
     color: colors.error,
   },
+  progressLog: {
+    color: colors.muted,
+    fontStyle: "italic",
+  },
   buttons: {
     flexDirection: "row",
     gap: spacing.sm,

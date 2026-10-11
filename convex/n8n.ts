@@ -35,6 +35,8 @@ async function n8nFetch(path: string, init: RequestInit = {}): Promise<any> {
   try {
     res = await fetch(`${host}/api/v1${path}`, {
       ...init,
+      // Never hang the action on a stalled n8n API.
+      signal: AbortSignal.timeout(30_000),
       headers: {
         "Content-Type": "application/json",
         "X-N8N-API-KEY": apiKey,
@@ -190,6 +192,8 @@ export async function triggerWebhook(
   try {
     res = await fetch(url, {
       method: "POST",
+      // The webhook trigger should answer quickly (onReceived); don't hang.
+      signal: AbortSignal.timeout(30_000),
       headers: {
         "Content-Type": "application/json",
         // Same bot-protection bypass as n8nFetch: the n8n host blocks
