@@ -32,7 +32,13 @@ function validWorkflow(): Record<string, unknown> {
         type: "n8n-nodes-base.set",
         typeVersion: 3,
         position: [200, 0],
-        parameters: { assignments: { assignments: [] } },
+        parameters: {
+          assignments: {
+            assignments: [
+              { id: "x1", name: "summary", value: "done", type: "string" },
+            ],
+          },
+        },
       },
       {
         id: "a3",
@@ -50,7 +56,7 @@ function validWorkflow(): Record<string, unknown> {
             ],
           },
           jsonBody:
-            '={"runId": "={{ $(\'Trigger\').item.json.body.runId }}", "status": "success"}',
+            '{"runId": "{{ $(\'Trigger\').item.json.body.runId }}", "status": "success"}',
         },
       },
     ],
@@ -170,7 +176,7 @@ test("validateWorkflowJson requires body.runId in callback nodes", () => {
     (n) => n.name === "ReportBack",
   ) as Record<string, unknown>;
   (report.parameters as Record<string, unknown>).jsonBody =
-    '={"runId": "={{ $(\'Trigger\').item.json.runId }}", "status": "success"}';
+    '{"runId": "{{ $(\'Trigger\').item.json.runId }}", "status": "success"}';
   const result = validateWorkflowJson(w, CALLBACK);
   expect(result.ok).toBe(false);
   expect(result.errors.some((e) => e.includes("body.runId"))).toBe(true);
@@ -265,4 +271,54 @@ test("extractJson returns undefined for non-JSON text", () => {
   expect(extractJson("Sorry, I cannot do that.")).toBeUndefined();
   expect(extractJson("")).toBeUndefined();
   expect(extractJson("{ not json")).toBeUndefined();
+});
+
+test("validateWorkflowJson rejects =-prefixed jsonBody (expressions would be sent literally)", () => {
+  // Regression: the prompt's own example once taught this malformed form —
+  // a leading "=" makes n8n evaluate the body as one JS expression, so the
+  // embedded {{ }} arrive as literal text and the runId never matches.
+  const w = validWorkflow();
+  const report = (w.nodes as Record<string, unknown>[]).find(
+    (n) => n.name === "ReportBack",
+  ) as Record<string, unknown>;
+  (report.parameters as Record<string, unknown>).jsonBody =
+    '={"runId": "{{ $(\'Trigger\').item.json.body.runId }}", "status": "success"}';
+  const result = validateWorkflowJson(w, CALLBACK);
+  expect(result.ok).toBe(false);
+  expect(result.errors.some((e) => e.includes("jsonBody"))).toBe(true);
+});
+
+test("validateWorkflowJson rejects Set nodes with no assignments", () => {
+  const w = validWorkflow();
+  const setNode = (w.nodes as Record<string, unknown>[]).find(
+    (n) => n.name === "DoWork",
+  ) as Record<string, unknown>;
+  (setNode.parameters as Record<string, unknown>).assignments = {
+    assignments: [],
+  };
+  const result = validateWorkflowJson(w, CALLBACK);
+  expect(result.ok).toBe(false);
+  expect(result.errors.some((e) => e.includes("DoWork"))).toBe(true);
+});
+
+test("validateWorkflowJson rejects error branches without onError continueErrorOutput", () => {
+  const w = validWorkflow();
+  (w.connections as Record<string, unknown>).DoWork = {
+    main: [[{ node: "ReportBack", type: "main", index: 0 }]],
+    error: [[{ node: "ReportBack", type: "main", index: 0 }]],
+  };
+  const withoutOnError = validateWorkflowJson(w, CALLBACK);
+  expect(withoutOnError.ok).toBe(false);
+  expect(withoutOnError.errors.some((e) => e.includes("onError"))).toBe(true);
+
+  const w2 = validWorkflow();
+  (w2.connections as Record<string, unknown>).DoWork = {
+    main: [[{ node: "ReportBack", type: "main", index: 0 }]],
+    error: [[{ node: "ReportBack", type: "main", index: 0 }]],
+  };
+  const doWork = (w2.nodes as Record<string, unknown>[]).find(
+    (n) => n.name === "DoWork",
+  ) as Record<string, unknown>;
+  doWork.onError = "continueErrorOutput";
+  expect(validateWorkflowJson(w2, CALLBACK).ok).toBe(true);
 });

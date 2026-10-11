@@ -19,6 +19,12 @@ import {
   type N8nWorkflow,
 } from "../src/lib/n8n";
 import {
+  buildSpecPrompt,
+  compileSpecToN8n,
+  validateWorkflowSpec,
+  type WorkflowSpec,
+} from "../src/lib/workflow-spec";
+import {
   N8nError,
   activateWorkflowOnN8n,
   createWorkflowOnN8n,
@@ -375,48 +381,18 @@ function getCallbackUrl(): string {
   return `${site}/n8n-callback`;
 }
 
-function buildWorkflowPrompt(
+/**
+ * Ask the LLM for a WorkflowSpec (not n8n JSON) and validate it, retrying
+ * once with the validation errors as fix-up context. The spec is small and
+ * contains no n8n syntax, so there is nothing structural for the model to
+ * get wrong — the compiler owns all of that.
+ */
+async function generateSpecWithRetry(
   prompt: string,
-  callbackUrl: string,
-): { system: string; user: string } {
-  const system = `You generate n8n workflow JSON from a user's natural-language automation request.
-This runs on a free open model, so follow the structure below exactly — do not improvise new shapes.
-
-RULES:
-- Output ONLY valid JSON: { "name": string, "nodes": [...], "connections": {...}, "settings": {...} }.
-- Allowed node types (use ONLY these): n8n-nodes-base.webhook, n8n-nodes-base.httpRequest, n8n-nodes-base.scheduleTrigger, n8n-nodes-base.code, n8n-nodes-base.if, n8n-nodes-base.set, @n8n/n8n-nodes-langchain.agent.
-- The FIRST node MUST be named exactly "Trigger", type n8n-nodes-base.webhook, with parameters { "httpMethod": "POST", "path": "dincharya-webhook", "responseMode": "onReceived" }. It receives { "runId": string } in the body.
-- The LAST step MUST be an HTTP Request node POSTing to ${callbackUrl} with a header "X-Callback-Secret" = "YOUR_N8N_CALLBACK_SECRET" and a JSON body containing "runId": "={{ $('Trigger').item.json.body.runId }}", "status": "success" and a short "summary". Add an error branch that posts status "failed" with the error text.
-- Reference the runId ONLY as {{ $('Trigger').item.json.body.runId }} (never $json.runId — intermediate nodes do not forward it). Webhook input is nested under "body".
-- Credentials: reference by descriptive placeholder name only, with empty id. NEVER invent credential IDs or include secrets.
-- If the request needs something with no matching node (e.g. native browser automation), use an HTTP Request node to "https://example.com/todo-wire-up" and add a "notes" field on the node explaining what the user must wire up.
-- Keep it to 8 nodes or fewer. Prefer simple over clever.
-
-EXAMPLE (minimal valid workflow):
-{
-  "name": "Dincharya: Example reminder",
-  "nodes": [
-    { "id": "a1", "name": "Trigger", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "parameters": { "httpMethod": "POST", "path": "dincharya-webhook", "responseMode": "onReceived" } },
-    { "id": "a2", "name": "DoWork", "type": "n8n-nodes-base.set", "typeVersion": 3, "position": [200, 0], "parameters": { "assignments": { "assignments": [{ "id": "x", "name": "summary", "value": "done", "type": "string" }] } } },
-    { "id": "a3", "name": "ReportBack", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4, "position": [400, 0], "parameters": { "method": "POST", "url": "${callbackUrl}", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "X-Callback-Secret", "value": "YOUR_N8N_CALLBACK_SECRET" }] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={\\"runId\\": \\"={{ $('Trigger').item.json.body.runId }}\\", \\"status\\": \\"success\\", \\"summary\\": \\"={{ $json.summary }}\\"}" } }
-  ],
-  "connections": {
-    "Trigger": { "main": [[{ "node": "DoWork", "type": "main", "index": 0 }]] },
-    "DoWork": { "main": [[{ "node": "ReportBack", "type": "main", "index": 0 }]] }
-  },
-  "settings": { "executionOrder": "v1" }
-}`;
-  const user = `Create an n8n workflow for this request:\n\n${prompt}`;
-  return { system, user };
-}
-
-async function generateWithRetry(
-  prompt: string,
-  callbackUrl: string,
   initialErrors: string[] = [],
-): Promise<N8nWorkflow> {
+): Promise<WorkflowSpec> {
   const { url, apiKey, model } = resolveLlmConfig();
-  const { system, user } = buildWorkflowPrompt(prompt, callbackUrl);
+  const { system, user } = buildSpecPrompt(prompt);
   let lastErrors: string[] = [...initialErrors];
   let lastRaw = "";
   // Two attempts: with a capable model the first usually validates; a third
@@ -428,7 +404,7 @@ async function generateWithRetry(
       signal: AbortSignal.timeout(180_000),
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model,
@@ -439,7 +415,7 @@ async function generateWithRetry(
             content:
               lastErrors.length === 0
                 ? user
-                : `${user}\n\nYour previous output had these problems — fix them:\n- ${lastErrors.join("\n- ")}`,
+                : `${user}\n\nYour previous spec had these problems \u2014 fix them:\n- ${lastErrors.join("\n- ")}`,
           },
         ],
         temperature: 0.3,
@@ -473,13 +449,32 @@ async function generateWithRetry(
       );
       continue;
     }
-    const result = validateWorkflowJson(parsed, callbackUrl);
-    if (result.ok && result.workflow) return result.workflow;
+    const result = validateWorkflowSpec(parsed);
+    if (result.ok && result.spec) return result.spec;
     lastErrors = result.errors;
   }
   throw new Error(
-    `Could not generate a valid workflow: ${lastErrors.slice(0, 3).join("; ")} — model returned: ${lastRaw.slice(0, 250)}`,
+    `Could not generate a valid workflow spec: ${lastErrors.slice(0, 3).join("; ")} — model returned: ${lastRaw.slice(0, 250)}`,
   );
+}
+
+/**
+ * Compile a validated spec to n8n JSON and assert the result passes workflow
+ * validation. The compiler is deterministic — a failure here is OUR bug, so
+ * throw loudly instead of asking the LLM to fix it.
+ */
+function compileAndAssert(spec: WorkflowSpec, callbackUrl: string): N8nWorkflow {
+  const compiled = compileSpecToN8n(spec, {
+    callbackUrl,
+    webhookPath: "dincharya-webhook",
+  });
+  const check = validateWorkflowJson(compiled, callbackUrl);
+  if (!check.ok || !check.workflow) {
+    throw new Error(
+      `Workflow compiler produced invalid n8n JSON (compiler bug, not a model error): ${check.errors.slice(0, 3).join("; ")}`,
+    );
+  }
+  return check.workflow;
 }
 
 /**
@@ -504,6 +499,26 @@ function finalizeWorkflowForN8n(workflow: N8nWorkflow): N8nWorkflow {
   }
   const secret = process.env.N8N_CALLBACK_SECRET || "";
   if (!secret) return workflow;
+  // Never trust the model with the secret: overwrite the X-Callback-Secret
+  // header on every node with the real value, whatever placeholder or
+  // invented string the model used. (The string substitution below remains
+  // as a fallback for placeholders appearing anywhere else.)
+  for (const n of nodes) {
+    const params = (n.parameters ?? {}) as Record<string, unknown>;
+    const hp = params.headerParameters as Record<string, unknown> | undefined;
+    const list = hp?.parameters;
+    if (Array.isArray(list)) {
+      for (const p of list) {
+        if (
+          p !== null &&
+          typeof p === "object" &&
+          (p as Record<string, unknown>).name === "X-Callback-Secret"
+        ) {
+          (p as Record<string, unknown>).value = secret;
+        }
+      }
+    }
+  }
   const substitute = (obj: unknown): unknown => {
     if (typeof obj === "string") {
       return obj.split("YOUR_N8N_CALLBACK_SECRET").join(secret);
@@ -673,7 +688,10 @@ export const generateWorkflow = internalAction({
       let n8nId: string | null = request.n8nWorkflowId ?? null;
       await log("Asking AI to draft the workflow…");
       let workflow = finalizeWorkflowForN8n(
-        await generateWithRetry(request.prompt, callbackUrl),
+        compileAndAssert(
+          await generateSpecWithRetry(request.prompt),
+          callbackUrl,
+        ),
       );
       let lastError: string | null = null;
 
@@ -693,9 +711,12 @@ export const generateWorkflow = internalAction({
         if (attempt > 0 && lastError) {
           await log("Test failed — regenerating with the error as context…");
           workflow = finalizeWorkflowForN8n(
-            await generateWithRetry(request.prompt, callbackUrl, [
-              `Live test run failed: ${lastError} — fix the workflow so the test passes.`,
-            ]),
+            compileAndAssert(
+              await generateSpecWithRetry(request.prompt, [
+                `Live test run failed: ${lastError} — fix the spec (check step logic and expressions) so the test passes.`,
+              ]),
+              callbackUrl,
+            ),
           );
         }
         if (n8nId) {

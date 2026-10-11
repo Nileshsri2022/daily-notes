@@ -10,6 +10,8 @@ export interface N8nNode {
   typeVersion: number;
   position: [number, number];
   parameters: Record<string, unknown>;
+  /** e.g. "continueErrorOutput" — required when the node has an error branch. */
+  onError?: string;
   credentials?: Record<string, { id: string; name: string }>;
 }
 
@@ -47,6 +49,8 @@ const N8nNodeSchema = z.object({
   typeVersion: z.number(),
   position: z.tuple([z.number(), z.number()]),
   parameters: z.record(z.string(), z.unknown()),
+  // n8n node-level settings we read during validation (e.g. error branches).
+  onError: z.string().optional(),
   credentials: z
     .record(z.string(), z.object({ id: z.string(), name: z.string() }))
     .optional(),
@@ -243,6 +247,52 @@ export function validateWorkflowJson(
         // carries runId: undefined and the run is never matched.
         errors.push(
           `Callback node "${node.name}" must reference the runId as {{ $('Trigger').item.json.body.runId }}`,
+        );
+      }
+      // A jsonBody starting with "=" is evaluated as a single JS expression,
+      // which turns the embedded {{ }} into literal text — the callback then
+      // carries a literal runId string and never matches a run. The correct
+      // form is plain JSON with embedded {{ }} expressions (no leading "=").
+      const jsonBody = (node.parameters as Record<string, unknown>).jsonBody;
+      if (typeof jsonBody === "string" && jsonBody.trimStart().startsWith("=")) {
+        errors.push(
+          `Callback node "${node.name}" jsonBody must be plain JSON with embedded {{ }} expressions, not a =-prefixed expression (the {{ }} would be sent literally, e.g. as the runId)`,
+        );
+      }
+    }
+  }
+
+  // An empty Set node is a no-op pass-through — the model sometimes emits one
+  // as filler instead of actually computing values.
+  for (const node of nodes) {
+    if (node.type === "n8n-nodes-base.set") {
+      const params = (node.parameters ?? {}) as Record<string, unknown>;
+      const v3 = (params.assignments as Record<string, unknown> | undefined)
+        ?.assignments;
+      const legacy = params.values as Record<string, unknown> | undefined;
+      const hasV3 = Array.isArray(v3) && v3.length > 0;
+      const hasLegacy =
+        !!legacy &&
+        Object.values(legacy).some(
+          (arr) => Array.isArray(arr) && arr.length > 0,
+        );
+      if (!hasV3 && !hasLegacy) {
+        errors.push(
+          `Set node "${node.name}" defines no assignments — it would pass data through unchanged`,
+        );
+      }
+    }
+  }
+
+  // Error-branch connections only fire when the source node opts in via
+  // onError: "continueErrorOutput" — otherwise the branch is dead code.
+  const connections = (w.connections ?? {}) as Record<string, unknown>;
+  for (const [from, outputs] of Object.entries(connections)) {
+    if (outputs && typeof outputs === "object" && "error" in outputs) {
+      const src = nodes.find((n) => n.name === from);
+      if (src && src.onError !== "continueErrorOutput") {
+        errors.push(
+          `Node "${from}" has an error-branch connection but does not set "onError": "continueErrorOutput" — the error branch would never run`,
         );
       }
     }
