@@ -220,19 +220,32 @@ export function validateWorkflowJson(
     );
   }
 
-  const callbackNode = nodes.find(
+  const callbackNodes = nodes.filter(
     (n) =>
       n.type === HTTP_NODE_TYPE &&
       JSON.stringify(n.parameters ?? {}).includes(callbackUrl),
   );
-  if (!callbackNode) {
+  if (callbackNodes.length === 0) {
     errors.push(
       `Workflow must include an HTTP Request node POSTing to the callback URL (${callbackUrl})`,
     );
-  } else if (
-    !JSON.stringify(callbackNode.parameters ?? {}).includes("runId")
-  ) {
-    errors.push("Callback node must forward the runId in its request body");
+  } else {
+    for (const node of callbackNodes) {
+      const paramsJson = JSON.stringify(node.parameters ?? {});
+      if (!paramsJson.includes("runId")) {
+        errors.push(
+          `Callback node "${node.name}" must forward the runId in its request body`,
+        );
+      } else if (
+        !/\$\(['"]Trigger['"]\)\.item\.json\.body\.runId/.test(paramsJson)
+      ) {
+        // Webhook input is nested under "body" — without it the callback
+        // carries runId: undefined and the run is never matched.
+        errors.push(
+          `Callback node "${node.name}" must reference the runId as {{ $('Trigger').item.json.body.runId }}`,
+        );
+      }
+    }
   }
 
   findSecrets(w, "", errors);

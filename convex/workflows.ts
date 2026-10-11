@@ -365,8 +365,8 @@ RULES:
 - Output ONLY valid JSON: { "name": string, "nodes": [...], "connections": {...}, "settings": {...} }.
 - Allowed node types (use ONLY these): n8n-nodes-base.webhook, n8n-nodes-base.httpRequest, n8n-nodes-base.scheduleTrigger, n8n-nodes-base.code, n8n-nodes-base.if, n8n-nodes-base.set, @n8n/n8n-nodes-langchain.agent.
 - The FIRST node MUST be named exactly "Trigger", type n8n-nodes-base.webhook, with parameters { "httpMethod": "POST", "path": "dincharya-webhook", "responseMode": "onReceived" }. It receives { "runId": string } in the body.
-- The LAST step MUST be an HTTP Request node POSTing to ${callbackUrl} with a header "X-Callback-Secret" = "YOUR_N8N_CALLBACK_SECRET" and a JSON body containing "runId": "={{ $('Trigger').item.json.runId }}", "status": "success" and a short "summary". Add an error branch that posts status "failed" with the error text.
-- Reference the runId ONLY as {{ $('Trigger').item.json.runId }} (never $json.runId — intermediate nodes do not forward it).
+- The LAST step MUST be an HTTP Request node POSTing to ${callbackUrl} with a header "X-Callback-Secret" = "YOUR_N8N_CALLBACK_SECRET" and a JSON body containing "runId": "={{ $('Trigger').item.json.body.runId }}", "status": "success" and a short "summary". Add an error branch that posts status "failed" with the error text.
+- Reference the runId ONLY as {{ $('Trigger').item.json.body.runId }} (never $json.runId — intermediate nodes do not forward it). Webhook input is nested under "body".
 - Credentials: reference by descriptive placeholder name only, with empty id. NEVER invent credential IDs or include secrets.
 - If the request needs something with no matching node (e.g. native browser automation), use an HTTP Request node to "https://example.com/todo-wire-up" and add a "notes" field on the node explaining what the user must wire up.
 - Keep it to 8 nodes or fewer. Prefer simple over clever.
@@ -377,7 +377,7 @@ EXAMPLE (minimal valid workflow):
   "nodes": [
     { "id": "a1", "name": "Trigger", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "parameters": { "httpMethod": "POST", "path": "dincharya-webhook", "responseMode": "onReceived" } },
     { "id": "a2", "name": "DoWork", "type": "n8n-nodes-base.set", "typeVersion": 3, "position": [200, 0], "parameters": { "assignments": { "assignments": [{ "id": "x", "name": "summary", "value": "done", "type": "string" }] } } },
-    { "id": "a3", "name": "ReportBack", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4, "position": [400, 0], "parameters": { "method": "POST", "url": "${callbackUrl}", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "X-Callback-Secret", "value": "YOUR_N8N_CALLBACK_SECRET" }] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={\\"runId\\": \\"={{ $('Trigger').item.json.runId }}\\", \\"status\\": \\"success\\", \\"summary\\": \\"={{ $json.summary }}\\"}" } }
+    { "id": "a3", "name": "ReportBack", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4, "position": [400, 0], "parameters": { "method": "POST", "url": "${callbackUrl}", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "X-Callback-Secret", "value": "YOUR_N8N_CALLBACK_SECRET" }] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={\\"runId\\": \\"={{ $('Trigger').item.json.body.runId }}\\", \\"status\\": \\"success\\", \\"summary\\": \\"={{ $json.summary }}\\"}" } }
   ],
   "connections": {
     "Trigger": { "main": [[{ "node": "DoWork", "type": "main", "index": 0 }]] },
@@ -455,6 +455,43 @@ async function generateWithRetry(
   throw new Error(
     `Could not generate a valid workflow: ${lastErrors.slice(0, 3).join("; ")} — model returned: ${lastRaw.slice(0, 250)}`,
   );
+}
+
+/**
+ * Server-side fix-ups applied after LLM validation, before create/update on
+ * n8n. The LLM is never trusted with uniqueness or secrets:
+ * - the webhook path is uniquified per workflow (the prompt's fixed
+ *   "dincharya-webhook" would collide across workflows and misroute triggers),
+ * - YOUR_N8N_CALLBACK_SECRET is replaced with the real N8N_CALLBACK_SECRET
+ *   (the LLM must never see the real secret; validation's placeholder check
+ *   lets the marker through for exactly this substitution).
+ */
+function finalizeWorkflowForN8n(workflow: N8nWorkflow): N8nWorkflow {
+  const w = workflow as unknown as Record<string, unknown>;
+  const nodes = w.nodes as Array<Record<string, unknown>>;
+  const trigger = nodes.find(
+    (n) => n.name === "Trigger" && n.type === "n8n-nodes-base.webhook",
+  );
+  if (trigger) {
+    const params = (trigger.parameters ?? {}) as Record<string, unknown>;
+    params.path = `dincharya-${crypto.randomUUID().slice(0, 8)}`;
+    trigger.parameters = params;
+  }
+  const secret = process.env.N8N_CALLBACK_SECRET || "";
+  if (!secret) return workflow;
+  const substitute = (obj: unknown): unknown => {
+    if (typeof obj === "string") {
+      return obj.split("YOUR_N8N_CALLBACK_SECRET").join(secret);
+    }
+    if (Array.isArray(obj)) return obj.map(substitute);
+    if (obj && typeof obj === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(obj)) out[k] = substitute(v);
+      return out;
+    }
+    return obj;
+  };
+  return substitute(w) as unknown as N8nWorkflow;
 }
 
 /** Test runs get a prefixed runId so the UI can hide them from run history. */
@@ -598,7 +635,9 @@ export const generateWorkflow = internalAction({
       // A repeated "Try again" reuses the stored n8n id so retries update the
       // existing workflow in place instead of leaving orphaned duplicates.
       let n8nId: string | null = request.n8nWorkflowId ?? null;
-      let workflow = await generateWithRetry(request.prompt, callbackUrl);
+      let workflow = finalizeWorkflowForN8n(
+        await generateWithRetry(request.prompt, callbackUrl),
+      );
       let lastError: string | null = null;
 
       // Attempt 0 = initial generation; further attempts = auto-fix using the
@@ -606,9 +645,11 @@ export const generateWorkflow = internalAction({
       // workflow that survives a live test execution.
       for (let attempt = 0; attempt <= MAX_TEST_FIX_ATTEMPTS; attempt++) {
         if (attempt > 0 && lastError) {
-          workflow = await generateWithRetry(request.prompt, callbackUrl, [
-            `Live test run failed: ${lastError} — fix the workflow so the test passes.`,
-          ]);
+          workflow = finalizeWorkflowForN8n(
+            await generateWithRetry(request.prompt, callbackUrl, [
+              `Live test run failed: ${lastError} — fix the workflow so the test passes.`,
+            ]),
+          );
         }
         if (n8nId) {
           await updateWorkflowOnN8n(

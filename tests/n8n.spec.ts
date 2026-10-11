@@ -50,7 +50,7 @@ function validWorkflow(): Record<string, unknown> {
             ],
           },
           jsonBody:
-            '={"runId": "={{ $(\'Trigger\').item.json.runId }}", "status": "success"}',
+            '={"runId": "={{ $(\'Trigger\').item.json.body.runId }}", "status": "success"}',
         },
       },
     ],
@@ -157,6 +157,23 @@ test("validateWorkflowJson requires webhook trigger and callback node", () => {
       e.includes("callback URL"),
     ),
   ).toBe(true);
+});
+
+test("validateWorkflowJson requires body.runId in callback nodes", () => {
+  // The fixed fixture uses the correct expression and must pass.
+  expect(validateWorkflowJson(validWorkflow(), CALLBACK).ok).toBe(true);
+
+  // A bare item.json.runId (webhook input nests under body) must fail with
+  // the fix instruction, so the retry loop can correct it.
+  const w = validWorkflow();
+  const report = (w.nodes as Record<string, unknown>[]).find(
+    (n) => n.name === "ReportBack",
+  ) as Record<string, unknown>;
+  (report.parameters as Record<string, unknown>).jsonBody =
+    '={"runId": "={{ $(\'Trigger\').item.json.runId }}", "status": "success"}';
+  const result = validateWorkflowJson(w, CALLBACK);
+  expect(result.ok).toBe(false);
+  expect(result.errors.some((e) => e.includes("body.runId"))).toBe(true);
 });
 
 test("validateWorkflowJson flags hardcoded secrets but allows placeholders", () => {
