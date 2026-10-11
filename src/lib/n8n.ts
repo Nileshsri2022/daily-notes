@@ -1,6 +1,8 @@
 // Pure helpers for the Dincharya × n8n prompt-to-workflow integration.
 // No React Native imports: safe to import from Convex backend code too.
 
+import { z } from "zod";
+
 export interface N8nNode {
   id: string;
   name: string;
@@ -31,6 +33,64 @@ export const ALLOWED_NODE_TYPES = [
 
 export const WEBHOOK_NODE_TYPE = "n8n-nodes-base.webhook";
 export const HTTP_NODE_TYPE = "n8n-nodes-base.httpRequest";
+
+// ---------------------------------------------------------------------------
+// Structural validation via Zod. The semantic rules (allowed node types,
+// webhook-first, callback reporting, secret scanning) stay as custom code
+// below — Zod can't express those, and their messages feed the LLM retry loop.
+// ---------------------------------------------------------------------------
+
+const N8nNodeSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: z.string().min(1),
+  typeVersion: z.number(),
+  position: z.tuple([z.number(), z.number()]),
+  parameters: z.record(z.string(), z.unknown()),
+  credentials: z
+    .record(z.string(), z.object({ id: z.string(), name: z.string() }))
+    .optional(),
+});
+
+const N8nWorkflowSchema = z.object({
+  name: z.string().min(1),
+  nodes: z.array(N8nNodeSchema).min(1),
+  connections: z.record(z.string(), z.unknown()),
+  settings: z.record(z.string(), z.unknown()).optional(),
+});
+
+/** True when the issue is a field that was absent entirely (not mistyped). */
+function isMissingIssue(issue: z.ZodIssue): boolean {
+  if (issue.code !== "invalid_type") return false;
+  if ("received" in issue) {
+    return (issue as { received?: unknown }).received === undefined;
+  }
+  return /received undefined/i.test(issue.message);
+}
+
+/**
+ * Translate Zod issues into the short "path: problem" messages the LLM
+ * retry loop consumes, keeping the vocabulary the pipeline already expects.
+ */
+function zodIssuesToMessages(error: z.ZodError): string[] {
+  return error.issues.map((issue) => {
+    const path = issue.path;
+    if (path.length === 0) return "Workflow must be a JSON object";
+    if (path.length === 1) {
+      const field = String(path[0]);
+      if (field === "name") return 'Missing or empty "name"';
+      if (field === "nodes") return 'Missing or empty "nodes" array';
+      if (field === "connections") return 'Missing or invalid "connections" object';
+      return `${field}: ${issue.message}`;
+    }
+    if (path[0] === "nodes" && typeof path[1] === "number") {
+      const field = path.slice(2).join(".");
+      if (isMissingIssue(issue)) return `nodes[${path[1]}]: missing "${field}"`;
+      return `nodes[${path[1]}]: invalid "${field}" — ${issue.message}`;
+    }
+    return `${path.map(String).join(".")}: ${issue.message}`;
+  });
+}
 
 /**
  * Cheap intent check: does this text ask to create an automation workflow?
@@ -117,41 +177,17 @@ export function validateWorkflowJson(
   callbackUrl: string,
 ): ValidationResult {
   const errors: string[] = [];
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
-    return { ok: false, errors: ["Workflow must be a JSON object"] };
+  const parsed = N8nWorkflowSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, errors: zodIssuesToMessages(parsed.error) };
   }
-  const w = input as Record<string, unknown>;
-
-  if (typeof w.name !== "string" || !w.name.trim()) {
-    errors.push('Missing or empty "name"');
-  }
-  if (!Array.isArray(w.nodes) || w.nodes.length === 0) {
-    errors.push('Missing or empty "nodes" array');
-  }
-  if (
-    !w.connections ||
-    typeof w.connections !== "object" ||
-    Array.isArray(w.connections)
-  ) {
-    errors.push('Missing or invalid "connections" object');
-  }
-  if (errors.length > 0) return { ok: false, errors };
+  const w = parsed.data as unknown as Record<string, unknown>;
 
   const nodes = w.nodes as Array<Record<string, unknown>>;
   const names = new Set<string>();
   const allowed = new Set<string>(ALLOWED_NODE_TYPES);
   nodes.forEach((n, i) => {
     const where = `nodes[${i}]`;
-    for (const field of [
-      "id",
-      "name",
-      "type",
-      "typeVersion",
-      "position",
-      "parameters",
-    ]) {
-      if (n[field] === undefined) errors.push(`${where}: missing "${field}"`);
-    }
     if (typeof n.name === "string") {
       if (names.has(n.name)) {
         errors.push(`${where}: duplicate node name "${n.name}"`);

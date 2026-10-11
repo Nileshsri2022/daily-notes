@@ -276,23 +276,65 @@ export const runNow = action({
   },
 });
 
+/**
+ * Re-run generation for a failed request. requestFromNote dedupes by note,
+ * so without this a failed card is a dead end — this lets the user tap
+ * "Try again" on the same note instead of writing a new one.
+ */
+export const retryRequest = action({
+  args: { requestId: v.id("workflowRequests") },
+  handler: async (ctx, { requestId }) => {
+    const request: Doc<"workflowRequests"> | null = await ctx.runQuery(
+      internal.workflows.getRequest,
+      { requestId },
+    );
+    const identity = await ctx.auth.getUserIdentity();
+    const userId = identity?.subject ?? "dev_user";
+    if (!request || request.clerkUserId !== userId) {
+      throw new Error("Workflow not found");
+    }
+    if (request.status !== "failed") {
+      throw new Error("Only failed requests can be retried");
+    }
+    await ctx.runMutation(internal.workflows.updateRequest, {
+      id: requestId,
+      status: "drafting",
+      error: "",
+    });
+    await ctx.scheduler.runAfter(0, internal.workflows.generateWorkflow, {
+      requestId,
+    });
+    return { requestId };
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Background generation (LLM → validate → n8n)
 // ---------------------------------------------------------------------------
 
 function resolveLlmConfig(): { url: string; apiKey: string; model: string } {
+  // Per-feature overrides let workflow generation use a different provider
+  // than notes/review (e.g. Gemini for workflows, Groq for notes). Each
+  // falls back to the shared AI_* vars when unset.
   const baseUrl =
-    process.env.AI_BASE_URL || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-  const apiKey = process.env.AI_API_KEY || process.env.OPENAI_API_KEY || "";
+    process.env.WORKFLOW_AI_BASE_URL ||
+    process.env.AI_BASE_URL ||
+    process.env.OPENAI_BASE_URL ||
+    "https://api.openai.com/v1";
+  const apiKey =
+    process.env.WORKFLOW_AI_API_KEY ||
+    process.env.AI_API_KEY ||
+    process.env.OPENAI_API_KEY ||
+    "";
   if (!apiKey) {
     throw new Error(
-      "AI API key is missing. Please set AI_API_KEY in Convex environment variables.",
+      "AI API key is missing. Please set WORKFLOW_AI_API_KEY (or AI_API_KEY) in Convex environment variables.",
     );
   }
   return {
     url: `${baseUrl.replace(/\/+$/, "")}/chat/completions`,
     apiKey,
-    model: "openai/gpt-oss-20b",
+    model: process.env.WORKFLOW_AI_MODEL || "openai/gpt-oss-20b",
   };
 }
 
@@ -348,6 +390,7 @@ async function generateWithRetry(
   const { url, apiKey, model } = resolveLlmConfig();
   const { system, user } = buildWorkflowPrompt(prompt, callbackUrl);
   let lastErrors: string[] = [];
+  let lastRaw = "";
   for (let attempt = 0; attempt < 3; attempt++) {
     const res = await fetch(url, {
       method: "POST",
@@ -376,11 +419,26 @@ async function generateWithRetry(
     }
     const data = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
+      error?: { message?: string };
     };
+    if (data.error) {
+      // Some providers answer HTTP 200 with an error payload instead of
+      // choices. Surface it directly rather than misreporting bad JSON.
+      throw new Error(
+        `AI Provider error: ${(data.error.message ?? "unknown").slice(0, 300)}`,
+      );
+    }
     const content = data.choices?.[0]?.message?.content ?? "";
+    lastRaw = content;
     const parsed = extractJson(content);
     if (parsed === undefined) {
       lastErrors = ["Output was not valid JSON"];
+      // Logged to the Convex function logs — this is how we see what the
+      // model actually returned when parsing fails.
+      console.log(
+        `[workflows] attempt ${attempt}: could not parse model output:`,
+        content.slice(0, 1500),
+      );
       continue;
     }
     const result = validateWorkflowJson(parsed, callbackUrl);
@@ -388,7 +446,7 @@ async function generateWithRetry(
     lastErrors = result.errors;
   }
   throw new Error(
-    `Could not generate a valid workflow: ${lastErrors.slice(0, 3).join("; ")}`,
+    `Could not generate a valid workflow: ${lastErrors.slice(0, 3).join("; ")} — model returned: ${lastRaw.slice(0, 250)}`,
   );
 }
 

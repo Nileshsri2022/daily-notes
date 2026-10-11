@@ -195,6 +195,30 @@ test("buildProductionWebhookUrl joins host and path", () => {
   );
 });
 
+test("validateWorkflowJson reports Zod structural problems clearly", () => {
+  const w = validWorkflow();
+  w.name = "";
+  expect(validateWorkflowJson(w, CALLBACK).errors).toContain(
+    'Missing or empty "name"',
+  );
+
+  const w2 = validWorkflow();
+  (w2.nodes as Record<string, unknown>[])[0].position = "left";
+  expect(
+    validateWorkflowJson(w2, CALLBACK).errors.some(
+      (e) => e.includes("nodes[0]") && e.includes("position"),
+    ),
+  ).toBe(true);
+
+  const w3 = validWorkflow();
+  (w3.nodes as Record<string, unknown>[])[1].name = "Trigger";
+  expect(
+    validateWorkflowJson(w3, CALLBACK).errors.some((e) =>
+      e.includes('duplicate node name "Trigger"'),
+    ),
+  ).toBe(true);
+});
+
 test("extractJson parses bare JSON", () => {
   const raw = JSON.stringify(validWorkflow());
   expect(extractJson(raw)).toEqual(validWorkflow());

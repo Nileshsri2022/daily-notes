@@ -90,6 +90,9 @@ In the **Convex dashboard → your deployment → Settings → Environment Varia
 | `N8N_CALLBACK_SECRET` | `<long random string>` | Shared secret; must match what the generated workflows send as `X-Callback-Secret`. Generate with `openssl rand -hex 32`. |
 | `CONVEX_SITE_URL` | `https://<your-deployment>.convex.site` | Your deployment's HTTP-actions URL. The generated workflows POST completion callbacks to `<this>/n8n-callback`. Find it in the Convex dashboard under Settings → URL & Deploy Key. |
 | `AI_API_KEY` | *(already set)* | The free model (`openai/gpt-oss-20b`) generates the workflow JSON. |
+| `WORKFLOW_AI_BASE_URL` | *(optional)* | Overrides `AI_BASE_URL` for workflow generation only. Example: `https://generativelanguage.googleapis.com/v1beta/openai` to use Gemini for workflows while notes keep using Groq. |
+| `WORKFLOW_AI_API_KEY` | *(optional)* | Overrides `AI_API_KEY` for workflow generation only. Set this when `WORKFLOW_AI_BASE_URL` points at a different provider (keys are provider-specific). |
+| `WORKFLOW_AI_MODEL` | *(optional)* | Overrides the workflow model. Example: `gemini-2.0-flash` or `openai/gpt-oss-120b`. Defaults to `openai/gpt-oss-20b`. |
 
 After setting variables, redeploy (`npx convex deploy` or push via `n8n convex dev`
 for dev).

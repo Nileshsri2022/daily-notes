@@ -48,7 +48,9 @@ export function WorkflowCard({ noteId }: { noteId: Id<"notes"> }) {
     request ? { requestId: request._id } : "skip",
   );
   const runNow = useAction(api.workflows.runNow);
+  const retry = useAction(api.workflows.retryRequest);
   const [running, setRunning] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   if (request === undefined || request === null) return null;
@@ -73,6 +75,21 @@ export function WorkflowCard({ noteId }: { noteId: Id<"notes"> }) {
       );
     } finally {
       setRunning(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    if (retrying) return;
+    setRetrying(true);
+    setActionError(null);
+    try {
+      await retry({ requestId: request._id });
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Could not retry the workflow.",
+      );
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -106,13 +123,23 @@ export function WorkflowCard({ noteId }: { noteId: Id<"notes"> }) {
             disabled={!request.n8nUrl}
             onPress={handleOpen}
           />
-          <Button
-            size="sm"
-            title={running ? "Starting…" : "Run now"}
-            disabled={request.status !== "ready" || running}
-            loading={running}
-            onPress={handleRun}
-          />
+          {request.status === "failed" ? (
+            <Button
+              size="sm"
+              title={retrying ? "Retrying…" : "Try again"}
+              disabled={retrying}
+              loading={retrying}
+              onPress={handleRetry}
+            />
+          ) : (
+            <Button
+              size="sm"
+              title={running ? "Starting…" : "Run now"}
+              disabled={request.status !== "ready" || running}
+              loading={running}
+              onPress={handleRun}
+            />
+          )}
         </View>
 
         {runs && runs.length > 0 ? (
