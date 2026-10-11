@@ -322,3 +322,17 @@ test("validateWorkflowJson rejects error branches without onError continueErrorO
   doWork.onError = "continueErrorOutput";
   expect(validateWorkflowJson(w2, CALLBACK).ok).toBe(true);
 });
+
+test("validateWorkflowJson rejects connection targets with missing or non-string node", () => {
+  const w = validWorkflow();
+  (w.connections as Record<string, unknown>).DoWork = {
+    main: [[{ type: "main", index: 0 }]],
+  };
+  const result = validateWorkflowJson(w, CALLBACK);
+  expect(result.ok).toBe(false);
+  expect(
+    result.errors.some((e) =>
+      e.includes("connection target node is missing or not a string"),
+    ),
+  ).toBe(true);
+});

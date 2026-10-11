@@ -375,14 +375,15 @@ export function compileSpecToN8n(
 
   const connections: Record<string, Record<string, ConnectionTarget[][]>> = {};
   const chain = ["Trigger", ...spec.steps.map((s) => s.name), "ReportBack"];
-  chain.forEach((fromName, i) => {
+  for (let i = 0; i < chain.length - 1; i++) {
+    const fromName = chain[i];
     const to = target(chain[i + 1]);
     const fromNode = nodes.find((n) => n.name === fromName);
     connections[fromName] =
       fromNode?.type === "n8n-nodes-base.if"
         ? { main: [[to], [to]] } // true and false outputs both continue
         : { main: [[to]] };
-  });
+  }
   // Every non-callback node reports failures; without onError the error
   // branch would be dead, so the compiler sets it wherever it wires one.
   for (const node of nodes) {

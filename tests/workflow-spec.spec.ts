@@ -1,7 +1,4 @@
 import { expect, test } from "@playwright/test";
-
-const { describe } = test;
-
 import {
   buildSpecPrompt,
   compileSpecToN8n,
@@ -9,6 +6,8 @@ import {
   type WorkflowSpec,
 } from "../src/lib/workflow-spec";
 import { validateWorkflowJson } from "../src/lib/n8n";
+
+const { describe } = test;
 
 const CALLBACK = "https://example.convex.site/n8n-callback";
 
@@ -254,6 +253,18 @@ describe("compileSpecToN8n", () => {
     >;
     expect(conns["Trigger"].main[0][0].node).toBe("GetDateTime");
     expect(conns["GetDateTime"].main[0][0].node).toBe("ReportBack");
+  });
+
+  test("ReportBack node has no outgoing main connections (no dangling target)", () => {
+    const compiled = compileSpecToN8n(datetimeSpec(), {
+      callbackUrl: CALLBACK,
+      webhookPath: "dincharya-webhook",
+    });
+    const conns = compiled.connections as Record<
+      string,
+      Record<string, { node: string }[][]>
+    >;
+    expect(conns["ReportBack"]?.main).toBeUndefined();
   });
 });
 

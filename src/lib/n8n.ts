@@ -155,17 +155,32 @@ function findSecrets(obj: unknown, path: string, hits: string[]): void {
   }
 }
 
-function collectTargetNames(value: unknown, out: Set<string>): void {
+function collectTargetNames(
+  value: unknown,
+  path: string,
+  out: Set<string>,
+  errors: string[],
+): void {
   if (Array.isArray(value)) {
-    value.forEach((v) => collectTargetNames(v, out));
+    value.forEach((v, i) =>
+      collectTargetNames(v, `${path}[${i}]`, out, errors),
+    );
     return;
   }
   if (value && typeof value === "object") {
     const o = value as Record<string, unknown>;
-    if (typeof o.node === "string") {
-      out.add(o.node);
-    } else {
-      Object.values(o).forEach((v) => collectTargetNames(v, out));
+    if ("node" in o || "index" in o || ("type" in o && typeof o.type === "string")) {
+      if (typeof o.node === "string" && o.node.length > 0) {
+        out.add(o.node);
+      } else {
+        errors.push(
+          `${path}: connection target node is missing or not a string`,
+        );
+      }
+      return;
+    }
+    for (const [k, v] of Object.entries(o)) {
+      collectTargetNames(v, `${path}.${k}`, out, errors);
     }
   }
 }
@@ -209,7 +224,7 @@ export function validateWorkflowJson(
     if (!names.has(from)) {
       errors.push(`connections: unknown source node "${from}"`);
     }
-    collectTargetNames(v, targets);
+    collectTargetNames(v, `connections.${from}`, targets, errors);
   }
   for (const t of targets) {
     if (!names.has(t)) {
