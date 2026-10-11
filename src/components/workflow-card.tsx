@@ -29,6 +29,13 @@ const RUN_COLOR: Record<string, string> = {
   failed: colors.error,
 };
 
+/**
+ * A run blocks a new "Run now" tap while it is still in flight. Rows stuck on
+ * "running" because their completion callback never arrived (e.g. wrong
+ * secret) age out after this instead of disabling the button forever.
+ */
+const ACTIVE_RUN_TIMEOUT_MS = 10 * 60 * 1000;
+
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleString(undefined, {
     dateStyle: "medium",
@@ -52,6 +59,10 @@ export function WorkflowCard({ noteId }: { noteId: Id<"notes"> }) {
   const [running, setRunning] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const hasActiveRun = (runs ?? []).some(
+    (r) => r.status === "running" && Date.now() - r.startedAt < ACTIVE_RUN_TIMEOUT_MS,
+  );
 
   if (request === undefined || request === null) return null;
 
@@ -134,8 +145,14 @@ export function WorkflowCard({ noteId }: { noteId: Id<"notes"> }) {
           ) : (
             <Button
               size="sm"
-              title={running ? "Starting…" : "Run now"}
-              disabled={request.status !== "ready" || running}
+              title={
+                running
+                  ? "Starting…"
+                  : hasActiveRun
+                    ? "Run in progress…"
+                    : "Run now"
+              }
+              disabled={request.status !== "ready" || running || hasActiveRun}
               loading={running}
               onPress={handleRun}
             />

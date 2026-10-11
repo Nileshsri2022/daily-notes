@@ -5,7 +5,7 @@ import {
   useEditorBridge,
 } from "@10play/tentap-editor";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -95,6 +95,7 @@ function EditorForm({
   const updateNote = useMutation(api.notes.update);
   const generateUploadUrl = useMutation(api.notes.generateCoverUploadUrl);
   const setCover = useMutation(api.notes.setCover);
+  const requestWorkflow = useAction(api.workflows.requestFromNote);
 
   const [dirty, setDirty] = useState(false);
   const [contentVersion, setContentVersion] = useState(0);
@@ -201,6 +202,13 @@ function EditorForm({
         await setCover({ id: savedId, coverStorageId: storageId });
       } else if (coverRemoved && noteId) {
         await setCover({ id: savedId });
+      }
+      if (body.trim()) {
+        // Fire-and-forget: workflow generation must never break the save flow.
+        // requestFromNote no-ops when the body has no workflow intent.
+        requestWorkflow({ noteId: savedId, prompt: body }).catch((wfErr) => {
+          console.warn("Workflow request failed:", wfErr);
+        });
       }
       router.replace("/");
     } catch (err) {

@@ -5,6 +5,7 @@ import {
   internalQuery,
   query,
 } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { currentUserId } from "./helpers";
@@ -21,8 +22,10 @@ import {
   N8nError,
   activateWorkflowOnN8n,
   createWorkflowOnN8n,
+  diagnoseExecution,
   n8nHost,
   triggerWebhook,
+  updateWorkflowOnN8n,
 } from "./n8n";
 
 const requestStatus = v.union(
@@ -219,7 +222,10 @@ export const listRuns = query({
       .query("workflowRuns")
       .filter((q) => q.eq(q.field("requestId"), requestId))
       .collect();
-    return runs.sort((a, b) => b.startedAt - a.startedAt);
+    // Hide test-on-generate runs from the user-visible history.
+    return runs
+      .filter((r) => !r.runId.startsWith(TEST_RUN_PREFIX))
+      .sort((a, b) => b.startedAt - a.startedAt);
   },
 });
 
@@ -386,10 +392,11 @@ EXAMPLE (minimal valid workflow):
 async function generateWithRetry(
   prompt: string,
   callbackUrl: string,
+  initialErrors: string[] = [],
 ): Promise<N8nWorkflow> {
   const { url, apiKey, model } = resolveLlmConfig();
   const { system, user } = buildWorkflowPrompt(prompt, callbackUrl);
-  let lastErrors: string[] = [];
+  let lastErrors: string[] = [...initialErrors];
   let lastRaw = "";
   for (let attempt = 0; attempt < 3; attempt++) {
     const res = await fetch(url, {
@@ -405,7 +412,7 @@ async function generateWithRetry(
           {
             role: "user",
             content:
-              attempt === 0
+              lastErrors.length === 0
                 ? user
                 : `${user}\n\nYour previous output had these problems — fix them:\n- ${lastErrors.join("\n- ")}`,
           },
@@ -450,6 +457,87 @@ async function generateWithRetry(
   );
 }
 
+/** Test runs get a prefixed runId so the UI can hide them from run history. */
+const TEST_RUN_PREFIX = "test-";
+const TEST_RUN_TIMEOUT_MS = 60_000;
+const TEST_POLL_INTERVAL_MS = 3_000;
+/** Auto-fix attempts after the initial generation (each = regenerate + retest). */
+const MAX_TEST_FIX_ATTEMPTS = 1;
+
+type TestResult =
+  | { ok: true }
+  | { ok: false; error: string; isGenerationProblem: boolean };
+
+/**
+ * Fire a live test run against the workflow's production webhook and wait for
+ * the completion callback. This is the same trigger path "Run now" uses, so a
+ * passing test genuinely proves the workflow works end to end.
+ */
+async function runTestAndWait(
+  ctx: ActionCtx,
+  requestId: Id<"workflowRequests">,
+  n8nWorkflowId: string,
+  webhookPath: string,
+): Promise<TestResult> {
+  const runId = `${TEST_RUN_PREFIX}${crypto.randomUUID()}`;
+  await ctx.runMutation(internal.workflows.insertRun, { requestId, runId });
+  const url = buildProductionWebhookUrl(n8nHost(), webhookPath);
+  const triggerTime = Date.now();
+  try {
+    await triggerWebhook(url, { runId });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await ctx.runMutation(internal.workflows.recordRun, {
+      runId,
+      status: "failed",
+      summary: message.slice(0, 500),
+    });
+    return {
+      ok: false,
+      error: `Test trigger failed: ${message}`,
+      isGenerationProblem: false,
+    };
+  }
+  const deadline = Date.now() + TEST_RUN_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, TEST_POLL_INTERVAL_MS));
+    const run = await ctx.runQuery(internal.workflows.findRun, { runId });
+    if (run && run.status !== "running") {
+      if (run.status === "success") return { ok: true };
+      return {
+        ok: false,
+        error: run.summary || "Test run reported failure",
+        isGenerationProblem: true,
+      };
+    }
+  }
+  // Timed out with no callback: diagnose via the n8n executions API.
+  const diag = await diagnoseExecution(n8nWorkflowId, triggerTime).catch(
+    () => null,
+  );
+  if (diag?.outcome === "failed") {
+    return {
+      ok: false,
+      error: `Test run failed${diag.node ? ` at node "${diag.node}"` : ""}: ${diag.message ?? "unknown error"}`,
+      isGenerationProblem: true,
+    };
+  }
+  if (diag?.outcome === "success") {
+    return {
+      ok: false,
+      error:
+        "Test run executed successfully on n8n but the completion callback never arrived — check N8N_CALLBACK_SECRET and the workflow's report node",
+      isGenerationProblem: false,
+    };
+  }
+  return {
+    ok: false,
+    error:
+      "Test run timed out with no callback and no matching n8n execution found — check the webhook URL and that the workflow is active",
+    isGenerationProblem: false,
+  };
+}
+
 export const generateWorkflow = internalAction({
   args: { requestId: v.id("workflowRequests") },
   handler: async (ctx, { requestId }) => {
@@ -460,41 +548,101 @@ export const generateWorkflow = internalAction({
       },
     );
     if (!request) return;
-    const fail = async (error: string) => {
+    const host = n8nHost();
+    const saveProgress = async (
+      n8nId: string,
+      workflow: N8nWorkflow,
+      status: "drafting" | "ready" | "failed",
+      error?: string,
+    ) => {
+      const webhookPath = extractWebhookPath(workflow);
       await ctx.runMutation(internal.workflows.updateRequest, {
         id: requestId,
-        status: "failed",
-        error: error.slice(0, 500),
+        status,
+        n8nWorkflowId: n8nId,
+        n8nUrl: `${host}/workflow/${n8nId}`,
+        webhookPath: webhookPath ?? undefined,
+        error,
       });
     };
-    try {
-      // Fail fast with clear errors when n8n / callback URL are not configured.
-      const callbackUrl = getCallbackUrl();
-      const host = n8nHost();
-      const workflow = await generateWithRetry(request.prompt, callbackUrl);
-      const { id } = await createWorkflowOnN8n(
-        workflow as unknown as Record<string, unknown>,
-      );
+    const activateBestEffort = async (n8nId: string) => {
       try {
-        await activateWorkflowOnN8n(id);
+        await activateWorkflowOnN8n(n8nId);
       } catch (e) {
         console.warn(
           "n8n auto-activate failed (runNow will retry):",
           e instanceof Error ? e.message : String(e),
         );
       }
-      const webhookPath = extractWebhookPath(workflow);
-      await ctx.runMutation(internal.workflows.updateRequest, {
-        id: requestId,
-        status: "ready",
-        n8nWorkflowId: id,
-        n8nUrl: `${host}/workflow/${id}`,
-        webhookPath: webhookPath ?? undefined,
-      });
+    };
+    const fail = async (
+      n8nId: string | null,
+      workflow: N8nWorkflow | null,
+      error: string,
+    ) => {
+      // Keep the n8n link on failed requests so the user can open a broken
+      // workflow in n8n to debug it.
+      if (n8nId && workflow) {
+        await saveProgress(n8nId, workflow, "failed", error.slice(0, 500));
+      } else {
+        await ctx.runMutation(internal.workflows.updateRequest, {
+          id: requestId,
+          status: "failed",
+          error: error.slice(0, 500),
+        });
+      }
+    };
+    try {
+      // Fail fast with clear errors when n8n / callback URL are not configured.
+      const callbackUrl = getCallbackUrl();
+      // A repeated "Try again" reuses the stored n8n id so retries update the
+      // existing workflow in place instead of leaving orphaned duplicates.
+      let n8nId: string | null = request.n8nWorkflowId ?? null;
+      let workflow = await generateWithRetry(request.prompt, callbackUrl);
+      let lastError: string | null = null;
+
+      // Attempt 0 = initial generation; further attempts = auto-fix using the
+      // failed test run's log as context. "Ready" is only granted to a
+      // workflow that survives a live test execution.
+      for (let attempt = 0; attempt <= MAX_TEST_FIX_ATTEMPTS; attempt++) {
+        if (attempt > 0 && lastError) {
+          workflow = await generateWithRetry(request.prompt, callbackUrl, [
+            `Live test run failed: ${lastError} — fix the workflow so the test passes.`,
+          ]);
+        }
+        if (n8nId) {
+          await updateWorkflowOnN8n(
+            n8nId,
+            workflow as unknown as Record<string, unknown>,
+          );
+        } else {
+          const created = await createWorkflowOnN8n(
+            workflow as unknown as Record<string, unknown>,
+          );
+          n8nId = created.id;
+        }
+        await activateBestEffort(n8nId);
+        const webhookPath = extractWebhookPath(workflow);
+        await saveProgress(n8nId, workflow, "drafting");
+        if (!webhookPath) {
+          lastError = "Could not determine webhook path from generated workflow";
+          break;
+        }
+        const test = await runTestAndWait(ctx, requestId, n8nId, webhookPath);
+        if (test.ok) {
+          await saveProgress(n8nId, workflow, "ready");
+          return;
+        }
+        lastError = test.error;
+        // Config/trigger problems (bad secret, unreachable webhook) can't be
+        // fixed by regenerating — surface them instead of looping.
+        if (!test.isGenerationProblem) break;
+      }
+      await fail(n8nId, workflow, lastError ?? "Test run failed");
     } catch (e) {
       const message =
         e instanceof N8nError || e instanceof Error ? e.message : String(e);
-      await fail(message);
+      await fail(null, null, message);
     }
   },
 });

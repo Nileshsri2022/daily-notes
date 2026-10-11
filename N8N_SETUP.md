@@ -102,10 +102,18 @@ for dev).
 1. In the app, create an AI note saying **"create a workflow that sends me a
    reminder"**.
 2. Open the note → you should see a ⚙️ Workflow card go from *Drafting…* to
-   *Ready* (or *Failed* with the error text if something's misconfigured).
+   *Ready*. Before marking *Ready*, the app fires a live test run against the
+   workflow's production webhook (the same trigger "Run now" uses) and waits
+   for the completion callback — *Ready* means the workflow actually executed
+   successfully, not just that its JSON was valid. If the test fails, the card
+   shows *Failed* with the real error (e.g. which node failed and why), and the
+   app makes one automatic regeneration attempt using the failed run's log as
+   context, updating the same workflow in place. Further retries use "Try
+   again" on the card.
 3. Tap **Open in n8n**, sign in, fill any credentials the workflow needs.
 4. Tap **Run now** → the run appears in the card's history as *Running*, then
-   *Success* once n8n's completion callback lands.
+   *Success* once n8n's completion callback lands. (Test runs are hidden from
+   this history.)
 
 If the card stays on *Drafting…* or shows *Failed*, the error text names the
 missing piece (usually one of the env vars above, or n8n not publicly

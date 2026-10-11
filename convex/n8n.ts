@@ -88,6 +88,96 @@ export async function activateWorkflowOnN8n(id: string): Promise<void> {
 }
 
 /**
+ * Update an existing workflow in place (PUT). Used when regenerating after a
+ * failed test run, so retries don't leave orphaned duplicates on n8n.
+ */
+export async function updateWorkflowOnN8n(
+  id: string,
+  workflowJson: Record<string, unknown>,
+): Promise<void> {
+  // Deactivate first: some n8n versions reject updates to active workflows.
+  try {
+    await n8nFetch(`/workflows/${encodeURIComponent(id)}/deactivate`, {
+      method: "POST",
+    });
+  } catch {
+    // Best-effort; the PUT below is the real attempt.
+  }
+  await n8nFetch(`/workflows/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(workflowJson),
+  });
+}
+
+export interface N8nExecutionDiagnosis {
+  /** "failed" = it ran and errored; "success" = it ran fine. */
+  outcome: "failed" | "success" | "unknown";
+  node?: string;
+  message?: string;
+}
+
+/**
+ * Find the most recent execution of a workflow started at/after `sinceMs`
+ * and report whether it failed (with the node-level error when available).
+ * Returns null when no matching execution is found or the lookup fails —
+ * e.g. the webhook never reached n8n at all.
+ */
+export async function diagnoseExecution(
+  n8nWorkflowId: string,
+  sinceMs: number,
+): Promise<N8nExecutionDiagnosis | null> {
+  let list: any;
+  try {
+    list = await n8nFetch(`/executions?limit=25`);
+  } catch {
+    return null;
+  }
+  const execs: any[] = ((list?.data ?? []) as any[]).filter(
+    (e: any) =>
+      e?.workflowId === n8nWorkflowId &&
+      new Date(e?.startedAt ?? 0).getTime() >= sinceMs - 10_000,
+  );
+  if (execs.length === 0) return null;
+  execs.sort(
+    (a: any, b: any) =>
+      new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+  );
+  const latest = execs[0];
+  let detail: any = null;
+  try {
+    detail = await n8nFetch(
+      `/executions/${encodeURIComponent(latest.id)}?includeData=true`,
+    );
+  } catch {
+    // Fall through to the list-level status.
+  }
+  const status: string | undefined = detail?.status ?? latest?.status;
+  if (status === "success") return { outcome: "success" };
+  if (status === "error") {
+    const runData: Record<string, any> =
+      detail?.data?.resultData?.runData ?? {};
+    let node: string | undefined;
+    let message: string | undefined =
+      detail?.data?.resultData?.error?.message;
+    for (const [name, items] of Object.entries(runData)) {
+      const arr = Array.isArray(items) ? items : [];
+      const withError = arr.find((it: any) => it?.error?.message);
+      if (withError) {
+        node = name;
+        message = withError.error.message;
+        break;
+      }
+    }
+    return {
+      outcome: "failed",
+      node,
+      message: message ?? "unknown node error",
+    };
+  }
+  return { outcome: "unknown" };
+}
+
+/**
  * Trigger a workflow via its production webhook URL.
  * Throws N8nError when unreachable or when n8n rejects the call
  * (most commonly: the workflow is not active).
