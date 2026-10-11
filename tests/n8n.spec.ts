@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   buildProductionWebhookUrl,
   detectWorkflowIntent,
+  extractJson,
   extractWebhookPath,
   validateWorkflowJson,
   type N8nWorkflow,
@@ -192,4 +193,35 @@ test("buildProductionWebhookUrl joins host and path", () => {
   expect(buildProductionWebhookUrl("https://n8n.example.com/", "hook")).toBe(
     "https://n8n.example.com/webhook/hook",
   );
+});
+
+test("extractJson parses bare JSON", () => {
+  const raw = JSON.stringify(validWorkflow());
+  expect(extractJson(raw)).toEqual(validWorkflow());
+});
+
+test("extractJson handles fenced JSON at the start", () => {
+  const raw = "```json\n" + JSON.stringify(validWorkflow()) + "\n```";
+  expect(extractJson(raw)).toEqual(validWorkflow());
+});
+
+test("extractJson handles preamble, fences, and trailing commentary", () => {
+  // This is what the free model actually returns — the old parser choked on it.
+  const raw =
+    "Here's your n8n workflow:\n```json\n" +
+    JSON.stringify(validWorkflow()) +
+    "\n```\nLet me know if you want any changes!";
+  expect(extractJson(raw)).toEqual(validWorkflow());
+});
+
+test("extractJson handles prose-wrapped JSON without fences", () => {
+  const raw =
+    "Sure, here it is: " + JSON.stringify(validWorkflow()) + " — enjoy!";
+  expect(extractJson(raw)).toEqual(validWorkflow());
+});
+
+test("extractJson returns undefined for non-JSON text", () => {
+  expect(extractJson("Sorry, I cannot do that.")).toBeUndefined();
+  expect(extractJson("")).toBeUndefined();
+  expect(extractJson("{ not json")).toBeUndefined();
 });

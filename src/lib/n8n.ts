@@ -218,3 +218,30 @@ export function extractWebhookPath(workflow: N8nWorkflow): string | null {
 export function buildProductionWebhookUrl(host: string, path: string): string {
   return `${host.replace(/\/+$/, "")}/webhook/${path}`;
 }
+
+/**
+ * Pull a JSON value out of an LLM response. Small free models rarely obey
+ * "output ONLY valid JSON" — they add a lead-in sentence, wrap the JSON in
+ * markdown fences, or append trailing commentary. Try, in order: any fenced
+ * code block, the span from the first "{" to the last "}", then the raw text.
+ * Returns undefined when nothing parses.
+ */
+export function extractJson(raw: string): unknown {
+  const candidates: string[] = [];
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) candidates.push(fenced[1]);
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start !== -1 && end > start) candidates.push(raw.slice(start, end + 1));
+  candidates.push(raw);
+  for (const candidate of candidates) {
+    const text = candidate.trim();
+    if (!text) continue;
+    try {
+      return JSON.parse(text);
+    } catch {
+      /* try the next candidate */
+    }
+  }
+  return undefined;
+}

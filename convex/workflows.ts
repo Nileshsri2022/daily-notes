@@ -12,6 +12,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import {
   buildProductionWebhookUrl,
   detectWorkflowIntent,
+  extractJson,
   extractWebhookPath,
   validateWorkflowJson,
   type N8nWorkflow,
@@ -340,19 +341,6 @@ EXAMPLE (minimal valid workflow):
   return { system, user };
 }
 
-function tryParseJson(raw: string): unknown | undefined {
-  try {
-    const cleaned = raw
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
-    return JSON.parse(cleaned);
-  } catch {
-    return undefined;
-  }
-}
-
 async function generateWithRetry(
   prompt: string,
   callbackUrl: string,
@@ -390,7 +378,7 @@ async function generateWithRetry(
       choices?: Array<{ message?: { content?: string } }>;
     };
     const content = data.choices?.[0]?.message?.content ?? "";
-    const parsed = tryParseJson(content);
+    const parsed = extractJson(content);
     if (parsed === undefined) {
       lastErrors = ["Output was not valid JSON"];
       continue;
